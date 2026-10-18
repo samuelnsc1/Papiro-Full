@@ -1,0 +1,2975 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Papiro Full | Gestão Inteligente de Estudos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- SDK OFICIAL DO SUPABASE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      
+      /* Modo Claro */
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-subtle: #f1f5f9;
+      --border: #cbd5e1;
+      --border-subtle: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #64748b;
+
+      /* Hero do Ciclo */
+      --cal-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      --cal-card-bg: rgba(255, 255, 255, 0.07);
+      --cal-card-border: rgba(255, 255, 255, 0.15);
+      --cal-text: #f8fafc;
+      --cal-text-muted: #94a3b8;
+
+      /* Alertas */
+      --status-green-bg: #ecfdf5;
+      --status-green-border: #059669;
+      --status-green-text: #064e3b;
+
+      --status-yellow-bg: #fffbeb;
+      --status-yellow-border: #d97706;
+      --status-yellow-text: #78350f;
+
+      --status-red-bg: #fff1f2;
+      --status-red-border: #e11d48;
+      --status-red-text: #881337;
+
+      --primary: #1d4ed8;
+      --primary-hover: #1e40af;
+      --primary-subtle: rgba(29, 78, 216, 0.12);
+
+      /* Badges TEC e QC */
+      --tec-color: #0284c7;
+      --tec-bg: rgba(2, 132, 199, 0.12);
+      --qc-color: #ea580c;
+      --qc-bg: rgba(234, 88, 12, 0.12);
+
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 15px 25px -5px rgba(0, 0, 0, 0.15);
+    }
+
+    [data-theme="dark"] {
+      --bg: #07090e;
+      --surface: #0f1420;
+      --surface-subtle: #161c2a;
+      --border: #263147;
+      --border-subtle: #1b2333;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --cal-bg: linear-gradient(135deg, #090e1a 0%, #131c31 100%);
+      --cal-card-bg: rgba(255, 255, 255, 0.04);
+      --cal-card-border: rgba(255, 255, 255, 0.09);
+      --cal-text: #f8fafc;
+      --cal-text-muted: #78889e;
+
+      --status-green-bg: rgba(5, 150, 105, 0.18);
+      --status-green-border: #10b981;
+      --status-green-text: #6ee7b7;
+
+      --status-yellow-bg: rgba(217, 119, 6, 0.18);
+      --status-yellow-border: #f59e0b;
+      --status-yellow-text: #fde68a;
+
+      --status-red-bg: rgba(225, 29, 72, 0.18);
+      --status-red-border: #f43f5e;
+      --status-red-text: #fecdd3;
+
+      --primary-subtle: rgba(29, 78, 216, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ==========================================================
+       1. TELA DE AUTENTICAÇÃO PAPIRO FULL
+       ========================================================== */
+    #authView {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: radial-gradient(circle at 50% 20%, rgba(29, 78, 216, 0.15) 0%, transparent 60%), var(--bg);
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2.2rem;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      gap: 1.3rem;
+    }
+
+    .auth-brand {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .auth-title {
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: var(--text);
+      text-transform: uppercase;
+    }
+
+    .auth-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .auth-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .auth-tab-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-field label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .form-field input, .form-field select {
+      padding: 0.7rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-subtle);
+      color: var(--text);
+      font-size: 0.88rem;
+      outline: none;
+      -webkit-appearance: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .form-field input:focus, .form-field select:focus {
+      border-color: var(--primary);
+      background: var(--surface);
+    }
+
+    .btn-auth-submit {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-auth-submit:hover {
+      background: var(--primary-hover);
+    }
+
+    .auth-alert-message {
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      display: none;
+    }
+    .auth-alert-message.error {
+      background: var(--status-red-bg);
+      color: var(--status-red-text);
+      border: 1px solid var(--status-red-border);
+      display: block;
+    }
+    .auth-alert-message.success {
+      background: var(--status-green-bg);
+      color: var(--status-green-text);
+      border: 1px solid var(--status-green-border);
+      display: block;
+    }
+
+    /* ==========================================================
+       2. DASHBOARD PRINCIPAL
+       ========================================================== */
+    #appView {
+      display: none;
+      padding: 1.5rem 1rem;
+    }
+
+    .app-shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* Cabeçalho */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.2rem;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      min-height: 54px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-shrink: 0;
+      z-index: 2;
+    }
+
+    .avatar-wrapper {
+      position: relative;
+      cursor: pointer;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid var(--primary);
+      overflow: hidden;
+      flex-shrink: 0;
+      background: var(--surface-subtle);
+    }
+
+    .avatar-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .profile-meta {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile-name-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 0.1rem 0.2rem;
+    }
+
+    .profile-user-name {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .edit-pencil-icon {
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+
+    .profile-user-email {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .header-center {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      white-space: nowrap;
+      z-index: 1;
+    }
+
+    .header-center-title {
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      flex-shrink: 0;
+      z-index: 2;
+    }
+
+    .theme-switch {
+      position: relative;
+      display: inline-block;
+      width: 54px;
+      height: 28px;
+      cursor: pointer;
+    }
+
+    .theme-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .theme-slider {
+      position: absolute;
+      inset: 0;
+      background-color: #cbd5e1;
+      border-radius: 30px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5px;
+      border: 1px solid var(--border);
+    }
+
+    .theme-icon {
+      font-size: 0.72rem;
+      user-select: none;
+    }
+
+    .theme-slider::after {
+      content: "";
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="dark"] .theme-slider {
+      background-color: #1e293b;
+      border-color: #334155;
+    }
+
+    [data-theme="dark"] .theme-slider::after {
+      transform: translateX(26px);
+      background-color: #f8fafc;
+    }
+
+    .btn-logout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.45rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-logout:hover {
+      color: #e11d48;
+      border-color: #e11d48;
+    }
+
+    /* Programação de Hoje */
+    .calendar-hero-card {
+      background: var(--cal-bg);
+      border-radius: 14px;
+      padding: 1.25rem 1.4rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--cal-card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .hero-top-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .hero-top-info .label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .hero-top-info .active-subjects {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.3;
+    }
+
+    .empty-cycle-hint {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #fde047;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .hero-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .hero-today-tag {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .btn-dots-menu {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .days-strip {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.55rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 0.2rem;
+    }
+
+    .day-cell {
+      background: var(--cal-card-bg);
+      border: 1px solid var(--cal-card-border);
+      border-radius: 9px;
+      padding: 0.75rem 0.55rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      min-width: 105px;
+    }
+
+    .day-cell.active-today {
+      background: rgba(37, 99, 235, 0.25);
+      border-color: #3b82f6;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.35);
+    }
+
+    .day-cell-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .day-cell-weekday {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--cal-text-muted);
+    }
+
+    .day-cell.active-today .day-cell-weekday {
+      color: #60a5fa;
+    }
+
+    .day-cell-date {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: var(--cal-text);
+    }
+
+    .day-cell-pills {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .cell-pill {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .under-calendar-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .btn-study-action {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-study-action.primary-btn {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .exam-metrics-row {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .exam-countdown-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .exam-countdown-box .counter-number {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .exam-countdown-box .counter-label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    .metrics-trio {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 0.5rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .metric-card.red { border-top: 4px solid var(--status-red-border); }
+    .metric-card.yellow { border-top: 4px solid var(--status-yellow-border); }
+    .metric-card.green { border-top: 4px solid var(--status-green-border); }
+
+    .metric-card .val {
+      font-size: 1.4rem;
+      font-weight: 900;
+    }
+
+    .metric-card .lbl {
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    /* Edital Verticalizado */
+    .section-header {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+
+    .accordion-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .subject-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .subject-box.is-today-active {
+      border: 2px solid var(--primary);
+    }
+
+    .subject-header {
+      padding: 0.95rem 1.25rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    .subject-header:hover {
+      background: var(--surface-subtle);
+    }
+
+    .subject-box.open .subject-header {
+      background: var(--surface-subtle);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .subject-name {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .chip-today {
+      background: var(--primary);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .subject-progress-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: var(--surface-subtle);
+      color: var(--primary);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.55rem;
+      border-radius: 20px;
+    }
+
+    .header-right-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: nowrap;
+    }
+
+    /* BADGES RESPONSIVAS: EXTENSO NO DESKTOP, SÍMBOLOS NO CELULAR */
+    .status-chip {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0.25rem 0.55rem;
+      border-radius: 5px;
+      white-space: nowrap;
+    }
+    .status-chip.red { background: var(--status-red-bg); color: var(--status-red-text); border: 1px solid var(--status-red-border); }
+    .status-chip.yellow { background: var(--status-yellow-bg); color: var(--status-yellow-text); border: 1px solid var(--status-yellow-border); }
+    .status-chip.green { background: var(--status-green-bg); color: var(--status-green-text); border: 1px solid var(--status-green-border); }
+
+    .chip-text-mobile { display: none; }
+    .chip-text-full { display: inline; }
+
+    .subject-content {
+      display: none;
+      padding: 0.85rem;
+      background: var(--surface);
+    }
+
+    .subject-box.open .subject-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .accordion-action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px dashed var(--border);
+      margin-bottom: 0.3rem;
+    }
+
+    .btn-add-topic {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.76rem;
+      font-weight: 800;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .inline-add-form {
+      display: none;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      gap: 0.5rem;
+      grid-template-columns: 1fr 140px 140px auto auto;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .inline-add-form.active {
+      display: grid;
+    }
+
+    .inline-input {
+      padding: 0.55rem 0.65rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.8rem;
+      font-weight: 600;
+      -webkit-appearance: none;
+    }
+
+    /* Linha do Assunto */
+    .topic-row-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 9px;
+      background: var(--surface);
+      border-left: 6px solid var(--border);
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topic-row-item.status-green { background: var(--status-green-bg); border-left-color: var(--status-green-border); }
+    .topic-row-item.status-yellow { background: var(--status-yellow-bg); border-left-color: var(--status-yellow-border); }
+    .topic-row-item.status-red { background: var(--status-red-bg); border-left-color: var(--status-red-border); }
+
+    .topic-info-side {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .check-topic-done {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-radius: 5px;
+      cursor: pointer;
+      display: grid;
+      place-content: center;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .check-topic-done:checked {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .check-topic-done:checked::before {
+      content: "✓";
+      color: white;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .topic-text-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
+    .topic-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .topic-title.is-done {
+      text-decoration: line-through;
+      color: var(--text-dim);
+    }
+
+    .topic-tags-row {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .link-pill {
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .link-pill.tec {
+      background: var(--tec-bg);
+      color: var(--tec-color);
+      border: 1px solid rgba(2, 132, 199, 0.35);
+    }
+
+    .link-pill.qc {
+      background: var(--qc-bg);
+      color: var(--qc-color);
+      border: 1px solid rgba(234, 88, 12, 0.35);
+    }
+
+    .link-pill.generic {
+      background: var(--surface-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-quick-link {
+      background: transparent;
+      border: 1px dashed var(--border);
+      color: var(--text-dim);
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-quick-link:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .obs-pill {
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+    }
+
+    .topic-actions-side {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .topic-days-box {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      min-width: 75px;
+    }
+
+    .topic-days-main {
+      font-size: 0.9rem;
+      font-weight: 900;
+      color: var(--text);
+    }
+
+    .topic-days-sub {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .topic-status-badge {
+      font-size: 0.74rem;
+      font-weight: 800;
+      padding: 0.3rem 0.6rem;
+      border-radius: 5px;
+      white-space: nowrap;
+      text-align: center;
+      min-width: 82px;
+    }
+
+    .status-green .topic-status-badge { background: #d1fae5; color: #064e3b; border: 1px solid #059669; }
+    .status-yellow .topic-status-badge { background: #fef3c7; color: #78350f; border: 1px solid #d97706; }
+    .status-red .topic-status-badge { background: #fee2e2; color: #881337; border: 1px solid #e11d48; }
+    .status-none .topic-status-badge { background: var(--surface-subtle); color: var(--text-dim); }
+
+    .btn-rev-topic {
+      background: #1d4ed8 !important;
+      color: #ffffff !important;
+      border: 1.5px solid #1e40af;
+      padding: 0.45rem 0.95rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-topic-more {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 900;
+    }
+
+    /* Estado Vazio Amigável */
+    .empty-topics-box {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .empty-topics-box h3 {
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+
+    .empty-topics-box p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      max-width: 480px;
+    }
+
+    /* Barra Inferior: Adicionar e Gerenciar Matérias */
+    .manage-subjects-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.85rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--border);
+      flex-wrap: wrap;
+    }
+
+    .btn-manage-sub {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .btn-manage-sub:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Cronômetro Flutuante */
+    .floating-timer-corner {
+      display: none;
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      background: var(--surface);
+      border: 2px solid var(--primary);
+      border-radius: 14px;
+      box-shadow: var(--shadow-lg);
+      padding: 1rem 1.25rem;
+      z-index: 1000;
+      width: 320px;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .corner-timer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .corner-timer-title {
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--primary);
+    }
+
+    .corner-timer-time {
+      font-size: 2.3rem;
+      font-weight: 900;
+      text-align: center;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      padding: 0.2rem 0;
+    }
+
+    .timer-segmented-control {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .timer-segment-btn {
+      background: transparent;
+      border: none;
+      padding: 0.35rem 0.2rem;
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .timer-segment-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .timer-quick-actions {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .btn-timer-action {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      text-align: center;
+    }
+
+    .btn-timer-action.start { background: var(--status-green-border); color: #fff; }
+    .btn-timer-action.pause { background: #d97706; color: #fff; }
+    .btn-timer-action.stop { background: #e11d48; color: #fff; }
+
+    /* Página de Estatísticas */
+    #statsView {
+      display: none;
+      padding: 1.5rem 1rem;
+    }
+
+    .stats-page-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .stats-navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .btn-back-dashboard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .stats-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    .stat-hero-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .stat-hero-card .val {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--primary);
+    }
+
+    .stat-hero-card .lbl {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .chart-box-large {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .stats-chart-columns {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.75rem;
+      align-items: flex-end;
+      height: 180px;
+      padding-top: 1rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .chart-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+      gap: 0.35rem;
+    }
+
+    .chart-bar {
+      width: 100%;
+      background: var(--primary);
+      border-radius: 6px 6px 0 0;
+      min-height: 4px;
+      transition: height 0.3s ease;
+    }
+
+    .chart-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    .chart-val {
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    /* Modais */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(3px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 620px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.8rem;
+    }
+
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .btn-close-modal {
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    /* ==========================================================
+       RESPONSIVIDADE (CELULAR, TABLET E COMPUTADOR)
+       ========================================================== */
+    @media (max-width: 900px) {
+      .exam-metrics-row { grid-template-columns: 1fr; }
+      .stats-cards-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 680px) {
+      header {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      .header-center {
+        position: static;
+        transform: none;
+        order: 3;
+        width: 100%;
+        text-align: center;
+      }
+      .topic-row-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .topic-actions-side {
+        width: 100%;
+        justify-content: space-between;
+        border-top: 1px dashed var(--border);
+        padding-top: 0.5rem;
+      }
+      .metrics-trio {
+        grid-template-columns: 1fr;
+      }
+      .floating-timer-corner {
+        top: auto;
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+        width: auto;
+      }
+
+      /* NO CELULAR: SUPRIME O TEXTO COMPRIDO PARA NÃO ENCAVALAR */
+      .chip-text-full { display: none; }
+      .chip-text-mobile { display: inline; }
+      .subject-header { padding: 0.85rem 0.95rem; }
+      .subject-name { font-size: 0.88rem; }
+      .subject-progress-badge { font-size: 0.65rem; padding: 0.15rem 0.4rem; }
+      .header-right-sub { gap: 0.25rem; }
+      .status-chip { padding: 0.2rem 0.4rem; font-size: 0.68rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. TELA DE AUTENTICAÇÃO PAPIRO FULL -->
+  <div id="authView">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <h2 class="auth-title">PAPIRO FULL</h2>
+        <p class="auth-subtitle">Acesse sua conta para organizar seus ciclos e revisões</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="tabLoginBtn" onclick="switchAuthTab('login')">Entrar</button>
+        <button class="auth-tab-btn" id="tabRegisterBtn" onclick="switchAuthTab('register')">Criar Conta</button>
+      </div>
+
+      <div id="authAlert" class="auth-alert-message"></div>
+
+      <!-- Login -->
+      <form id="loginForm" class="auth-form" onsubmit="handleSupabaseLogin(event)">
+        <div class="form-field">
+          <label for="loginEmail">E-mail</label>
+          <input type="email" id="loginEmail" placeholder="seuemail@exemplo.com" required>
+        </div>
+        <div class="form-field">
+          <label for="loginPassword">Senha</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-auth-submit" id="btnLoginSubmit">Entrar</button>
+      </form>
+
+      <!-- Cadastro -->
+      <form id="registerForm" class="auth-form" style="display: none;" onsubmit="handleSupabaseRegister(event)">
+        <div class="form-field">
+          <label for="regName">Nome Completo</label>
+          <input type="text" id="regName" placeholder="Ex: Samuel" required>
+        </div>
+        <div class="form-field">
+          <label for="regEmail">E-mail</label>
+          <input type="email" id="regEmail" placeholder="seuemail@exemplo.com" required>
+        </div>
+        <div class="form-field">
+          <label for="regPassword">Senha</label>
+          <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" minlength="6" required>
+        </div>
+        <button type="submit" class="btn-auth-submit" id="btnRegSubmit">Criar Conta</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. DASHBOARD PRINCIPAL -->
+  <div id="appView">
+    <div class="app-shell">
+      
+      <!-- Cabeçalho -->
+      <header>
+        <div class="header-left">
+          <div class="avatar-wrapper" onclick="triggerAvatarUpload()" title="Clique para trocar foto">
+            <img id="profileImg" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" alt="Foto">
+          </div>
+          <input type="file" id="avatarFileInput" accept="image/*" style="display: none;" onchange="handleAvatarChange(event)">
+          <div class="profile-meta">
+            <div class="profile-name-row" onclick="openEditProfileModal()" title="Clique para editar seu nome ou concurso">
+              <span class="profile-user-name" id="userDisplayName">Concurseiro</span>
+              <span class="edit-pencil-icon">✏️</span>
+            </div>
+            <span class="profile-user-email" id="userDisplayEmail">aluno@exemplo.com</span>
+          </div>
+        </div>
+
+        <div class="header-center">
+          <h1 class="header-center-title" id="projectTitleHeader">MEU PROJETO</h1>
+        </div>
+
+        <div class="header-right">
+          <label class="theme-switch" title="Alternar tema Claro/Escuro">
+            <input type="checkbox" id="themeToggleCheckbox" onchange="handleThemeToggle(this.checked)">
+            <span class="theme-slider">
+              <span class="theme-icon">☀️</span>
+              <span class="theme-icon">🌙</span>
+            </span>
+          </label>
+          
+          <button class="btn-logout" onclick="handleSupabaseLogout()" title="Sair da conta">Sair</button>
+        </div>
+      </header>
+
+      <!-- 1. Programação de Hoje (7 Dias) -->
+      <div class="calendar-hero-card">
+        <div class="hero-top-info">
+          <div>
+            <div class="label">Programação de Hoje • <span id="currentCycleDayLabel">Dia 1 de 7</span></div>
+            <div class="active-subjects" id="todaySubjectsTitle">Carregando ciclo...</div>
+          </div>
+          
+          <div class="hero-controls">
+            <div class="hero-today-tag" id="todayDatePill">--/--/----</div>
+            <button class="btn-dots-menu" onclick="openCycleConfigModal()" title="Configurar Ciclo de 7 Dias & Matérias">⋮</button>
+          </div>
+        </div>
+
+        <div class="days-strip" id="calendarDaysStrip"></div>
+      </div>
+
+      <!-- 2. Botões: Cronômetro e Estatísticas -->
+      <div class="under-calendar-toolbar">
+        <button class="btn-study-action primary-btn" onclick="toggleCornerTimer()">
+          <span>⏱️</span> <span id="headerTimerQuickLabel">Cronômetro</span>
+        </button>
+        <button class="btn-study-action" onclick="showStatsPage()">
+          <span>📊</span> <span>Estatísticas</span>
+        </button>
+      </div>
+
+      <!-- 3. Meta da Prova e Diagnóstico -->
+      <div class="exam-metrics-row">
+        <div class="exam-countdown-box">
+          <div class="counter-number" id="countdownDaysVal">--</div>
+          <div class="counter-label" id="examDateLabel">Dias até a Prova (17/02/2027)</div>
+        </div>
+
+        <div class="metrics-trio">
+          <div class="metric-card red">
+            <div class="val" id="metricRed">0</div>
+            <div class="lbl">Atrasados</div>
+          </div>
+          <div class="metric-card yellow">
+            <div class="val" id="metricYellow">0</div>
+            <div class="lbl">Atenção</div>
+          </div>
+          <div class="metric-card green">
+            <div class="val" id="metricGreen">0</div>
+            <div class="lbl">Em dia</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Edital Verticalizado -->
+      <div>
+        <div class="section-header">EDITAL VERTICALIZADO E REVISÃO POR BLOCOS</div>
+        
+        <div class="accordion-list" id="accordionList" style="margin-top: 0.65rem;"></div>
+
+        <!-- Botões de Gerenciar Disciplinas -->
+        <div class="manage-subjects-toolbar">
+          <button class="btn-manage-sub" onclick="openAddNewSubjectModal()">
+            <span>➕</span> Nova Matéria
+          </button>
+          <button class="btn-manage-sub" onclick="openManageSubjectsModal()">
+            <span>⚙️</span> Gerenciar / Excluir Matéria
+          </button>
+          <button class="btn-manage-sub" onclick="loadExampleTRT3Template()" style="opacity: 0.8; font-size:0.75rem;">
+            <span>📥</span> Carregar Modelo TRT-3 (Opcional)
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 3. PÁGINA EXCLUSIVA DE ESTATÍSTICAS -->
+  <div id="statsView">
+    <div class="stats-page-container">
+      
+      <div class="stats-navbar">
+        <button class="btn-back-dashboard" onclick="hideStatsPage()">
+          <span>←</span> <span>Voltar ao Ciclo de Estudos</span>
+        </button>
+        <h2 style="font-size:1.3rem; font-weight:900;">RELATÓRIO DE ESTATÍSTICAS</h2>
+        <div></div>
+      </div>
+
+      <div class="stats-cards-grid">
+        <div class="stat-hero-card">
+          <div class="val" id="fullStatToday">0m</div>
+          <div class="lbl">Estudado Hoje</div>
+        </div>
+        <div class="stat-hero-card">
+          <div class="val" id="fullStat15Days">0m</div>
+          <div class="lbl">Últimos 15 Dias</div>
+        </div>
+        <div class="stat-hero-card">
+          <div class="val" id="fullStatMonth">0m</div>
+          <div class="lbl">Total no Mês</div>
+        </div>
+        <div class="stat-hero-card">
+          <div class="val" id="fullStatTotal">0m</div>
+          <div class="lbl">Total Acumulado</div>
+        </div>
+      </div>
+
+      <div class="chart-box-large">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="font-size:1rem; font-weight:800;">Tempo Estudado na Semana Atual</h3>
+          <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">Segunda a Domingo</span>
+        </div>
+        <div class="stats-chart-columns" id="fullStatsWeekChart"></div>
+      </div>
+
+      <div class="chart-box-large">
+        <h3 style="font-size:1rem; font-weight:800;">Consulta por Período Personalizado</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:0.75rem; align-items:flex-end;">
+          <div class="form-field">
+            <label>Data Inicial</label>
+            <input type="date" id="statsDateStart">
+          </div>
+          <div class="form-field">
+            <label>Data Final</label>
+            <input type="date" id="statsDateEnd">
+          </div>
+          <button class="btn-auth-submit" style="padding:0.65rem 1.25rem;" onclick="filterCustomStats()">Filtrar Período</button>
+        </div>
+        <div id="statsCustomResult" style="font-size:1rem; font-weight:800; color:var(--primary); margin-top:0.5rem;">
+          Selecione as datas para consultar seu rendimento.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. CRONÔMETRO FLUTUANTE (COM OPÇÃO MANUAL) -->
+  <div class="floating-timer-corner" id="floatingTimerCorner">
+    <div class="corner-timer-header">
+      <span class="corner-timer-title">⏱️ Cronômetro de Estudo</span>
+      <button class="btn-close-modal" onclick="toggleCornerTimer()">✕</button>
+    </div>
+
+    <!-- ABAS DO CRONÔMETRO: AUTOMÁTICO, REGRESSIVO E MANUAL -->
+    <div class="timer-segmented-control">
+      <button class="timer-segment-btn active" id="btnCornerModeUp" onclick="setTimerMode('up')">Livre</button>
+      <button class="timer-segment-btn" id="btnCornerModeDown" onclick="setTimerMode('down')">Regressiva</button>
+      <button class="timer-segment-btn" id="btnCornerModeManual" onclick="setTimerMode('manual')">Manual</button>
+    </div>
+
+    <!-- ÁREA DO CRONÔMETRO AUTOMÁTICO -->
+    <div id="timerAutoArea">
+      <div id="countdownPresetGroup" style="display:none; gap:0.3rem; justify-content:center; margin-bottom: 0.5rem;">
+        <button class="btn-study-action" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="setCountdownMinutes(30)">30m</button>
+        <button class="btn-study-action" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="setCountdownMinutes(50)">50m</button>
+        <button class="btn-study-action" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="setCountdownMinutes(60)">60m</button>
+        <button class="btn-study-action" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="setCountdownMinutes(90)">90m</button>
+      </div>
+
+      <div class="corner-timer-time" id="cornerTimerDisplay">00:00:00</div>
+
+      <div class="form-field" style="margin-bottom:0.6rem;">
+        <label style="font-size:0.7rem;">Matéria</label>
+        <select id="cornerSubjectSelect" style="font-size:0.78rem; padding:0.4rem;"></select>
+      </div>
+
+      <div class="timer-quick-actions">
+        <button class="btn-timer-action start" id="btnTimerStart" onclick="startTimer()">Iniciar</button>
+        <button class="btn-timer-action pause" id="btnTimerPause" onclick="pauseTimer()" style="display:none;">Pausar</button>
+        <button class="btn-timer-action stop" onclick="finishTimer()">Salvar Sessão</button>
+      </div>
+    </div>
+
+    <!-- ÁREA DE LANÇAMENTO MANUAL -->
+    <div id="timerManualArea" style="display:none; flex-direction:column; gap:0.6rem;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.4rem;">
+        <div class="form-field">
+          <label style="font-size:0.7rem;">Horas</label>
+          <input type="number" id="manualHours" min="0" max="23" value="0" placeholder="0">
+        </div>
+        <div class="form-field">
+          <label style="font-size:0.7rem;">Minutos</label>
+          <input type="number" id="manualMinutes" min="1" max="59" value="50" placeholder="50">
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label style="font-size:0.7rem;">Matéria</label>
+        <select id="manualSubjectSelect" style="font-size:0.78rem; padding:0.4rem;"></select>
+      </div>
+
+      <div class="form-field">
+        <label style="font-size:0.7rem;">Data do Estudo</label>
+        <input type="date" id="manualStudyDate">
+      </div>
+
+      <button class="btn-auth-submit" style="padding:0.6rem; font-size:0.8rem;" onclick="saveManualStudySession()">Registrar Tempo</button>
+    </div>
+  </div>
+
+  <!-- 5. MODAL: CONFIGURAÇÃO DO CICLO DE 7 DIAS POR DROPDOWNS -->
+  <div class="modal-overlay" id="cycleConfigModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ Configuração do Ciclo de 7 Dias</h3>
+        <button class="btn-close-modal" onclick="closeModal('cycleConfigModal')">✕</button>
+      </div>
+
+      <!-- Cadastrar Nova Matéria -->
+      <div style="background:var(--surface-subtle); border:1px solid var(--border); padding:0.75rem; border-radius:8px;">
+        <label style="font-size:0.75rem; font-weight:800; display:block; margin-bottom:0.35rem;">Cadastrar Nova Matéria</label>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="text" id="inpNewSubjectName" class="inline-input" placeholder="Ex: DIREITO ELEITORAL" style="flex:1;">
+          <button class="btn-auth-submit" style="padding:0.45rem 0.9rem;" onclick="handleRegisterNewSubject()">Adicionar</button>
+        </div>
+      </div>
+
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">
+        Selecione as matérias que você estudará em cada dia da semana:
+      </p>
+
+      <div id="cycleDaysConfigList" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
+
+      <button class="btn-auth-submit" onclick="saveCycleConfig()">Salvar Ciclo de Estudos</button>
+    </div>
+  </div>
+
+  <!-- 6. MODAL: CONFIGURAÇÃO DE PRAZOS & LINK DO TÓPICO -->
+  <div class="modal-overlay" id="topicConfigModal">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Configurar Assunto</h3>
+        <button class="btn-close-modal" onclick="closeModal('topicConfigModal')">✕</button>
+      </div>
+
+      <div style="font-size:0.88rem; font-weight:800;" id="topicModalTitle">--</div>
+
+      <div class="form-field">
+        <label>Link de Questões (TEC Concursos ou Qconcursos)</label>
+        <input type="url" id="topicModalLink" placeholder="https://www.tecconcursos.com.br/... ou https://www.qconcursos.com/...">
+      </div>
+
+      <div class="form-field">
+        <label>Observação / Material de Apoio</label>
+        <input type="text" id="topicModalObs" placeholder="Ex: PDF Aula 02 ou bateria de questões">
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem;">
+        <div class="form-field">
+          <label>Dias para Atenção (🟡)</label>
+          <input type="number" id="topicModalYellow" min="1" max="365">
+        </div>
+
+        <div class="form-field">
+          <label>Dias para Atraso (🔴)</label>
+          <input type="number" id="topicModalRed" min="1" max="365">
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; gap:0.5rem; margin-top:0.5rem;">
+        <button class="btn-auth-submit" style="flex:1;" onclick="saveTopicConfig()">Salvar Alterações</button>
+        <button class="btn-auth-submit" style="background:#e11d48;" onclick="deleteCurrentTopic()">Excluir Assunto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. MODAL: EDITAR NOME DO PERFIL E NOME DO PROJETO/CONCURSO -->
+  <div class="modal-overlay" id="editProfileModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">✏️ Personalizar Perfil & Concurso</h3>
+        <button class="btn-close-modal" onclick="closeModal('editProfileModal')">✕</button>
+      </div>
+
+      <div class="form-field">
+        <label for="inpEditProfileName">Seu Nome Completo</label>
+        <input type="text" id="inpEditProfileName" placeholder="Ex: Samuel">
+      </div>
+
+      <div class="form-field">
+        <label for="inpEditProjectName">Nome do Concurso / Projeto</label>
+        <input type="text" id="inpEditProjectName" placeholder="Ex: PROJETO TRT 3, PROJETO TJ-SP, etc.">
+      </div>
+
+      <button class="btn-auth-submit" onclick="saveProfileAndProject()">Salvar Alterações</button>
+    </div>
+  </div>
+
+  <!-- 8. MODAL: ADICIONAR NOVA DISCIPLINA -->
+  <div class="modal-overlay" id="newSubjectModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">➕ Cadastrar Nova Matéria</h3>
+        <button class="btn-close-modal" onclick="closeModal('newSubjectModal')">✕</button>
+      </div>
+
+      <div class="form-field">
+        <label>Nome da Matéria</label>
+        <input type="text" id="inpDirectNewSubject" placeholder="Ex: DIREITO ELEITORAL">
+      </div>
+
+      <div class="form-field">
+        <label>Primeiro Conteúdo / Bloco Inicial (Opcional)</label>
+        <input type="text" id="inpDirectFirstTopic" placeholder="Ex: Introdução e Princípios">
+      </div>
+
+      <button class="btn-auth-submit" onclick="saveDirectNewSubject()">Cadastrar Matéria</button>
+    </div>
+  </div>
+
+  <!-- 9. MODAL: GERENCIAR / EXCLUIR MATÉRIAS -->
+  <div class="modal-overlay" id="manageSubjectsModal">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ Gerenciar e Excluir Matérias</h3>
+        <button class="btn-close-modal" onclick="closeModal('manageSubjectsModal')">✕</button>
+      </div>
+
+      <p style="font-size:0.75rem; color:var(--text-muted);">
+        Atenção: Ao excluir uma matéria, todos os seus conteúdos cadastrados também serão excluídos.
+      </p>
+
+      <div id="manageSubjectsList" style="display:flex; flex-direction:column; gap:0.5rem; max-height:320px; overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT & SUPABASE -->
+  <script>
+    const SUPABASE_URL = "https://omqprsqscgiexkjnkuey.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcXByc3FzY2dpZXhram5rdWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNDY0NDcsImV4cCI6MjEwNzkyMjQ0N30.8lpbOY5-fmDRmt-KBB-_BSC9hkNa3yc-W7Lv1WvwwU4";
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentUser = null;
+    let topics = [];
+    let currentProjectName = localStorage.getItem("papiro_project_title") || "MEU PROJETO";
+
+    // Controle em memória dos acordeões abertos
+    const openSubjectIds = new Set();
+
+    // Matérias disponíveis (inicia vazia para novas contas, popula conforme criadas)
+    let registeredSubjectList = [];
+
+    // Ciclo de 7 dias (Inicia zerado por padrão para novas contas)
+    let studyCycle = [
+      { day: 1, subjects: [] },
+      { day: 2, subjects: [] },
+      { day: 3, subjects: [] },
+      { day: 4, subjects: [] },
+      { day: 5, subjects: [] },
+      { day: 6, subjects: [] },
+      { day: 7, subjects: [] }
+    ];
+
+    const CYCLE_ANCHOR_DATE = "2026-10-18";
+    let selectedTopicIdForConfig = null;
+
+    /* ==========================================================
+       FORMATADOR DE TEMPO (HORAS E MINUTOS EXATOS)
+       ========================================================== */
+    function formatDuration(totalSeconds) {
+      if (!totalSeconds || totalSeconds <= 0) return "0m";
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+
+      if (h === 0) return `${m}m`;
+      if (m === 0) return `${h}h`;
+      return `${h}h ${m}m`;
+    }
+
+    /* ==========================================================
+       AUTENTICAÇÃO COM SUPABASE
+       ========================================================== */
+    function switchAuthTab(tab) {
+      document.getElementById("tabLoginBtn").classList.toggle("active", tab === "login");
+      document.getElementById("tabRegisterBtn").classList.toggle("active", tab === "register");
+      document.getElementById("loginForm").style.display = tab === "login" ? "flex" : "none";
+      document.getElementById("registerForm").style.display = tab === "register" ? "flex" : "none";
+      document.getElementById("authAlert").style.display = "none";
+    }
+
+    function showAuthAlert(msg, type = "error") {
+      const alertBox = document.getElementById("authAlert");
+      alertBox.textContent = msg;
+      alertBox.className = `auth-alert-message ${type}`;
+      alertBox.style.display = "block";
+    }
+
+    async function handleSupabaseLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const btn = document.getElementById("btnLoginSubmit");
+      btn.textContent = "Entrando...";
+      btn.disabled = true;
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      btn.textContent = "Entrar";
+      btn.disabled = false;
+
+      if (error) {
+        showAuthAlert(error.message);
+      } else {
+        currentUser = data.user;
+        await loadUserDataAndBootstrap();
+      }
+    }
+
+    async function handleSupabaseRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById("regName").value.trim();
+      const email = document.getElementById("regEmail").value.trim();
+      const password = document.getElementById("regPassword").value;
+      const btn = document.getElementById("btnRegSubmit");
+      btn.textContent = "Criando conta...";
+      btn.disabled = true;
+
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: { data: { name } }
+      });
+
+      btn.textContent = "Criar Conta";
+      btn.disabled = false;
+
+      if (error) {
+        showAuthAlert(error.message);
+      } else {
+        showAuthAlert("Conta criada com sucesso! Carregando...", "success");
+        currentUser = data.user;
+        setTimeout(() => loadUserDataAndBootstrap(), 1200);
+      }
+    }
+
+    async function handleSupabaseLogout() {
+      if (confirm("Deseja realmente sair?")) {
+        await supabaseClient.auth.signOut();
+        currentUser = null;
+        document.getElementById("appView").style.display = "none";
+        document.getElementById("statsView").style.display = "none";
+        document.getElementById("authView").style.display = "flex";
+      }
+    }
+
+    /* ==========================================================
+       EDIÇÃO DE PERFIL E DO NOME DO CONCURSO/PROJETO
+       ========================================================== */
+    function openEditProfileModal() {
+      document.getElementById("inpEditProfileName").value = document.getElementById("userDisplayName").textContent;
+      document.getElementById("inpEditProjectName").value = currentProjectName;
+      document.getElementById("editProfileModal").style.display = "flex";
+    }
+
+    async function saveProfileAndProject() {
+      const newName = document.getElementById("inpEditProfileName").value.trim();
+      const newProject = document.getElementById("inpEditProjectName").value.trim();
+
+      if (!newName || !newProject) {
+        return alert("Preencha o nome e o nome do concurso/projeto.");
+      }
+
+      currentProjectName = newProject.toUpperCase();
+      document.getElementById("projectTitleHeader").textContent = currentProjectName;
+      document.getElementById("userDisplayName").textContent = newName;
+      localStorage.setItem("papiro_project_title", currentProjectName);
+
+      if (currentUser) {
+        await supabaseClient.from("profiles").update({ name: newName }).eq("id", currentUser.id);
+      }
+
+      closeModal("editProfileModal");
+    }
+
+    /* ==========================================================
+       CARREGAR DADOS DO SUPABASE (COMEÇA DO ZERO SE FOR CONTA NOVA)
+       ========================================================== */
+    async function loadUserDataAndBootstrap() {
+      if (!currentUser) return;
+
+      document.getElementById("projectTitleHeader").textContent = currentProjectName;
+
+      // 1. Carregar Perfil
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (profile) {
+        document.getElementById("userDisplayName").textContent = profile.name || "Concurseiro";
+        document.getElementById("userDisplayEmail").textContent = profile.email || "";
+        if (profile.avatar_url) document.getElementById("profileImg").src = profile.avatar_url;
+      }
+
+      // 2. Carregar Ciclo Personalizado
+      const { data: settings } = await supabaseClient
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (settings && settings.cycle_config && Array.isArray(settings.cycle_config)) {
+        studyCycle = settings.cycle_config;
+      }
+
+      // 3. Carregar Tópicos do Edital
+      const { data: dbTopics } = await supabaseClient
+        .from('study_topics')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: true });
+
+      // NOVA REGRA: NÃO força edital do TRT-3 se a conta for nova!
+      topics = (dbTopics || []).map(t => ({
+        id: t.id,
+        subject: t.subject,
+        title: t.title,
+        completed: t.completed,
+        obs: t.obs,
+        link: t.link,
+        lastReview: t.last_review,
+        green: t.green_limit,
+        yellow: t.yellow_limit,
+        red: t.red_limit
+      }));
+
+      // Extrai matérias cadastradas a partir dos tópicos do usuário
+      registeredSubjectList = Array.from(new Set(topics.map(t => t.subject)));
+      
+      // Também adiciona matérias cadastradas no ciclo
+      studyCycle.forEach(c => {
+        c.subjects.forEach(s => {
+          if (s && !registeredSubjectList.includes(s)) registeredSubjectList.push(s);
+        });
+      });
+
+      populateDropdowns();
+
+      document.getElementById("authView").style.display = "none";
+      document.getElementById("appView").style.display = "block";
+
+      initCountdown();
+      renderDaysStrip();
+      renderAccordions();
+    }
+
+    function populateDropdowns() {
+      const cornerSelect = document.getElementById("cornerSubjectSelect");
+      const manualSelect = document.getElementById("manualSubjectSelect");
+      if (cornerSelect) cornerSelect.innerHTML = "";
+      if (manualSelect) manualSelect.innerHTML = "";
+
+      if (registeredSubjectList.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "Nenhuma matéria cadastrada";
+        if (cornerSelect) cornerSelect.appendChild(opt.cloneNode(true));
+        if (manualSelect) manualSelect.appendChild(opt);
+        return;
+      }
+
+      registeredSubjectList.forEach(sub => {
+        const opt = document.createElement("option");
+        opt.value = sub;
+        opt.textContent = sub;
+        if (cornerSelect) cornerSelect.appendChild(opt.cloneNode(true));
+        if (manualSelect) manualSelect.appendChild(opt);
+      });
+    }
+
+    // BOTÃO OPCIONAL: Carregar Modelo Exemplo TRT-3
+    async function loadExampleTRT3Template() {
+      if (topics.length > 0) {
+        if (!confirm("Isso adicionará o edital base do TRT-3 à sua conta. Deseja continuar?")) return;
+      }
+
+      const payload = [
+        { subject: "PORTUGUÊS", title: "Compreensão e interpretação de textos", completed: true, obs: "", link: "", last_review: "", green_limit: 20, yellow_limit: 30, red_limit: 40 },
+        { subject: "PORTUGUÊS", title: "Ortografia e acentuação gráfica", completed: true, obs: "", link: "https://www.tecconcursos.com.br/s/Q6ok1", last_review: "2026-08-13", green_limit: 20, yellow_limit: 30, red_limit: 40 },
+        { subject: "PORTUGUÊS", title: "Transitividade Verbal e Termos Integrantes", completed: false, obs: "exercícios", link: "https://www.tecconcursos.com.br/s/Q6wh7", last_review: "2026-09-21", green_limit: 20, yellow_limit: 30, red_limit: 40 },
+        { subject: "DIREITO DO TRABALHO", title: "Princípios e fontes - FGTS e insalubridade", completed: true, obs: "", link: "", last_review: "2026-10-14", green_limit: 20, yellow_limit: 30, red_limit: 40 },
+        { subject: "DIREITO DO TRABALHO", title: "Das férias (Período concessivo e faltas)", completed: true, obs: "", link: "", last_review: "2026-09-22", green_limit: 20, yellow_limit: 30, red_limit: 40 },
+        { subject: "PROCESSO DO TRABALHO", title: "Atos, termos e prazos processuais (CLT)", completed: true, obs: "", link: "", last_review: "2026-09-01", green_limit: 20, yellow_limit: 30, red_limit: 40 },
+        { subject: "RACIOCÍNIO LÓGICO", title: "Estruturas lógicas e tabelas-verdade", completed: true, obs: "", link: "", last_review: "2026-09-18", green_limit: 20, yellow_limit: 30, red_limit: 40 }
+      ].map(t => ({ ...t, user_id: currentUser.id }));
+
+      await supabaseClient.from('study_topics').insert(payload);
+      await loadUserDataAndBootstrap();
+      alert("Modelo carregado com sucesso!");
+    }
+
+    /* ==========================================================
+       CONFIGURAÇÃO DO CICLO DE 7 DIAS POR DROPDOWNS
+       ========================================================== */
+    function getCycleDayIndexForDate(targetDate) {
+      const anchor = new Date(CYCLE_ANCHOR_DATE + "T00:00:00");
+      anchor.setHours(0,0,0,0);
+      const target = new Date(targetDate);
+      target.setHours(0,0,0,0);
+      const diffDays = Math.floor((target - anchor) / (1000 * 60 * 60 * 24));
+      return (((diffDays % 7) + 7) % 7);
+    }
+
+    function openCycleConfigModal() {
+      renderCycleDaysConfigList();
+      document.getElementById("cycleConfigModal").style.display = "flex";
+    }
+
+    function renderCycleDaysConfigList() {
+      const container = document.getElementById("cycleDaysConfigList");
+      container.innerHTML = "";
+
+      studyCycle.forEach((item, dayIdx) => {
+        const dayCard = document.createElement("div");
+        dayCard.style.cssText = "background:var(--surface-subtle); border:1px solid var(--border); border-radius:8px; padding:0.6rem;";
+
+        let selectsHtml = "";
+        const currentSubjects = item.subjects.length > 0 ? item.subjects : [""];
+
+        currentSubjects.forEach((subVal, subIdx) => {
+          selectsHtml += `
+            <div style="display:flex; align-items:center; gap:0.4rem; margin-top:0.35rem;">
+              <select class="inline-input" style="flex:1;" id="selDay_${dayIdx}_${subIdx}">
+                <option value="">-- Selecione uma Matéria --</option>
+                ${registeredSubjectList.map(s => `<option value="${s}" ${s === subVal ? 'selected' : ''}>${s}</option>`).join("")}
+              </select>
+              ${subIdx > 0 ? `<button class="btn-topic-more" style="width:24px; height:24px;" onclick="removeSubjectFromDay(${dayIdx}, ${subIdx})">✕</button>` : ''}
+            </div>
+          `;
+        });
+
+        dayCard.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:0.8rem;">Dia ${item.day}</strong>
+            <button class="btn-add-topic" style="padding:0.2rem 0.5rem; font-size:0.68rem;" onclick="addSubjectToDay(${dayIdx})">+ Matéria</button>
+          </div>
+          <div id="daySelectsContainer_${dayIdx}">${selectsHtml}</div>
+        `;
+        container.appendChild(dayCard);
+      });
+    }
+
+    function addSubjectToDay(dayIdx) {
+      studyCycle[dayIdx].subjects.push(registeredSubjectList[0] || "");
+      renderCycleDaysConfigList();
+    }
+
+    function removeSubjectFromDay(dayIdx, subIdx) {
+      studyCycle[dayIdx].subjects.splice(subIdx, 1);
+      renderCycleDaysConfigList();
+    }
+
+    function handleRegisterNewSubject() {
+      const inp = document.getElementById("inpNewSubjectName");
+      const name = inp.value.trim().toUpperCase();
+      if (!name) return alert("Digite o nome da matéria.");
+
+      if (!registeredSubjectList.includes(name)) {
+        registeredSubjectList.push(name);
+        populateDropdowns();
+        renderCycleDaysConfigList();
+        inp.value = "";
+        alert(`Matéria "${name}" cadastrada!`);
+      } else {
+        alert("Esta matéria já está na lista.");
+      }
+    }
+
+    async function saveCycleConfig() {
+      studyCycle.forEach((item, dayIdx) => {
+        const container = document.getElementById(`daySelectsContainer_${dayIdx}`);
+        const selects = container.querySelectorAll("select");
+        const chosen = [];
+        selects.forEach(sel => {
+          if (sel.value) chosen.push(sel.value);
+        });
+        item.subjects = chosen;
+      });
+
+      if (currentUser) {
+        await supabaseClient
+          .from('user_settings')
+          .update({ cycle_config: studyCycle })
+          .eq('user_id', currentUser.id);
+      }
+
+      closeModal("cycleConfigModal");
+      renderDaysStrip();
+      renderAccordions();
+    }
+
+    function renderDaysStrip() {
+      const strip = document.getElementById("calendarDaysStrip");
+      if (!strip) return;
+      strip.innerHTML = "";
+
+      const today = new Date();
+      const currentCycleIndex = getCycleDayIndexForDate(today);
+      const activeCycle = studyCycle[currentCycleIndex];
+
+      document.getElementById("currentCycleDayLabel").textContent = `Dia ${activeCycle.day} de 7`;
+
+      // Se a conta for nova ou o ciclo estiver vazio, exibe o aviso com a seta para os 3 pontinhos
+      if (!activeCycle.subjects || activeCycle.subjects.length === 0) {
+        document.getElementById("todaySubjectsTitle").innerHTML = `
+          <div class="empty-cycle-hint">
+            <span>👉 Configure seu ciclo de 7 dias nos 3 pontinhos (⋮) acima</span>
+          </div>
+        `;
+      } else {
+        document.getElementById("todaySubjectsTitle").textContent = activeCycle.subjects.join(" • ");
+      }
+
+      document.getElementById("todayDatePill").textContent = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+
+      const DAYS_ABBR = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(today.getDate() + i);
+        const cycleIdx = getCycleDayIndexForDate(d);
+        const cycleItem = studyCycle[cycleIdx];
+        const isToday = i === 0;
+
+        const cell = document.createElement("div");
+        cell.className = `day-cell ${isToday ? 'active-today' : ''}`;
+
+        let pills = "";
+        if (cycleItem.subjects && cycleItem.subjects.length > 0) {
+          cycleItem.subjects.forEach(s => {
+            pills += `<span class="cell-pill" title="${s}">${s}</span>`;
+          });
+        } else {
+          pills = `<span class="cell-pill" style="opacity:0.5;">Vazio (⋮)</span>`;
+        }
+
+        cell.innerHTML = `
+          <div class="day-cell-top">
+            <span class="day-cell-weekday">${DAYS_ABBR[d.getDay()]}</span>
+            <span class="day-cell-date">${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}</span>
+          </div>
+          <div class="day-cell-pills">${pills}</div>
+        `;
+        strip.appendChild(cell);
+      }
+    }
+
+    function initCountdown() {
+      const exam = new Date("2027-02-17T00:00:00");
+      const today = new Date();
+      exam.setHours(0,0,0,0);
+      today.setHours(0,0,0,0);
+      const diff = Math.ceil((exam - today) / (1000 * 60 * 60 * 24));
+      document.getElementById("countdownDaysVal").textContent = diff > 0 ? diff : "0";
+    }
+
+    /* ==========================================================
+       EDITAL VERTICALIZADO (NUNCA FECHA AO CLICAR NOS TÓPICOS)
+       ========================================================== */
+    function calcDays(dateStr) {
+      if (!dateStr) return null;
+      const [y, m, d] = dateStr.split("-");
+      const rev = new Date(y, m - 1, d);
+      rev.setHours(0,0,0,0);
+      const now = new Date();
+      now.setHours(0,0,0,0);
+      return Math.floor((now - rev) / (1000 * 60 * 60 * 24));
+    }
+
+    function evalStatus(diff, g, y) {
+      if (diff === null) return { cls: "status-none", badge: "Sem Registro", type: "none" };
+      const greenLim = Number(g) || 20;
+      const yellowLim = Number(y) || 30;
+
+      if (diff <= greenLim) return { cls: "status-green", badge: "Em dia", type: "green" };
+      if (diff > greenLim && diff <= yellowLim) return { cls: "status-yellow", badge: "Atenção", type: "yellow" };
+      return { cls: "status-red", badge: "Atrasado", type: "red" };
+    }
+
+    function formatShortDate(dateStr) {
+      if (!dateStr) return "--";
+      const [, m, d] = dateStr.split("-");
+      return `${d}/${m}`;
+    }
+
+    function getTodayString() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function renderLinkBadge(url, topicId) {
+      if (!url) {
+        return `<button class="btn-quick-link" onclick="event.stopPropagation(); quickAddLink('${topicId}')" title="Inserir Link do TEC ou Qconcursos">+ Link</button>`;
+      }
+      const u = url.toLowerCase();
+      if (u.includes("tecconcursos.com.br")) {
+        return `<a href="${url}" target="_blank" onclick="event.stopPropagation()" class="link-pill tec" title="Abrir TEC Concursos">TEC ↗</a>`;
+      } else if (u.includes("qconcursos.com")) {
+        return `<a href="${url}" target="_blank" onclick="event.stopPropagation()" class="link-pill qc" title="Abrir Qconcursos">QC ↗</a>`;
+      } else {
+        return `<a href="${url}" target="_blank" onclick="event.stopPropagation()" class="link-pill generic" title="Abrir Link Externo">🔗 ↗</a>`;
+      }
+    }
+
+    function renderAccordions() {
+      const container = document.getElementById("accordionList");
+      if (!container) return;
+      container.innerHTML = "";
+
+      let totRed = 0, totYellow = 0, totGreen = 0;
+      const todayCycleIndex = getCycleDayIndexForDate(new Date());
+      const todaySubjects = studyCycle[todayCycleIndex].subjects || [];
+
+      // SE CONTA NOVA / NENHUM TÓPICO CADASTRADO: Exibe estado vazio amigável
+      if (topics.length === 0) {
+        container.innerHTML = `
+          <div class="empty-topics-box">
+            <div style="font-size:2.5rem;">📝</div>
+            <h3>Nenhuma matéria cadastrada</h3>
+            <p>Seu edital está zerado. Clique no botão <strong>+ Nova Matéria</strong> abaixo para cadastrar suas disciplinas e começar!</p>
+          </div>
+        `;
+        document.getElementById("metricRed").textContent = "0";
+        document.getElementById("metricYellow").textContent = "0";
+        document.getElementById("metricGreen").textContent = "0";
+        return;
+      }
+
+      const grouped = {};
+      topics.forEach(t => {
+        const cat = (t.subject || "OUTROS").toUpperCase();
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(t);
+      });
+
+      const allUniqueSubjects = Object.keys(grouped);
+
+      allUniqueSubjects.forEach(sub => {
+        const list = grouped[sub] || [];
+        if (list.length === 0) return;
+
+        let subRed = 0, subYellow = 0, subGreen = 0;
+        let completedCount = 0;
+
+        list.forEach(item => {
+          if (item.completed) completedCount++;
+          const diff = calcDays(item.lastReview);
+          const st = evalStatus(diff, item.green, item.yellow);
+          if (st.type === "red") { subRed++; totRed++; }
+          if (st.type === "yellow") { subYellow++; totYellow++; }
+          if (st.type === "green") { subGreen++; totGreen++; }
+        });
+
+        const percent = list.length > 0 ? Math.round((completedCount / list.length) * 100) : 0;
+        const isToday = todaySubjects.some(s => s && s.toUpperCase() === sub.toUpperCase());
+        const boxId = `box-${sub.replace(/\s+/g, '')}`;
+        const isOpen = openSubjectIds.has(boxId);
+
+        const box = document.createElement("div");
+        box.className = `subject-box ${isToday ? 'is-today-active' : ''} ${isOpen ? 'open' : ''}`;
+        box.id = boxId;
+
+        // Cabeçalho com suporte a versão completa e versão mobile com símbolos (sem encavalar)
+        box.innerHTML = `
+          <div class="subject-header" onclick="toggleSubject('${box.id}', event)">
+            <div class="header-left-sub">
+              <span class="subject-name">${sub}</span>
+              ${isToday ? '<span class="chip-today">Estudar Hoje</span>' : ''}
+              <span class="subject-progress-badge">${percent}% (${completedCount}/${list.length})</span>
+            </div>
+            <div class="header-right-sub">
+              ${subRed > 0 ? `
+                <span class="status-chip red" title="${subRed} atrasados">
+                  <span class="chip-text-full">${subRed} atrasados</span>
+                  <span class="chip-text-mobile">⚠️ ${subRed}</span>
+                </span>` : ''}
+              ${subYellow > 0 ? `
+                <span class="status-chip yellow" title="${subYellow} atenção">
+                  <span class="chip-text-full">${subYellow} atenção</span>
+                  <span class="chip-text-mobile">⚡ ${subYellow}</span>
+                </span>` : ''}
+              ${subGreen > 0 ? `
+                <span class="status-chip green" title="${subGreen} em dia">
+                  <span class="chip-text-full">${subGreen} em dia</span>
+                  <span class="chip-text-mobile">✓ ${subGreen}</span>
+                </span>` : ''}
+              <span style="font-size:0.75rem; font-weight:700;">${list.length}</span>
+              <span style="font-size:0.85rem; font-weight:800;">▼</span>
+            </div>
+          </div>
+          
+          <div class="subject-content" id="content-${box.id}">
+            <div class="accordion-action-bar">
+              <button class="btn-add-topic" onclick="event.stopPropagation(); toggleAddForm('${sub}')">+ Adicionar Bloco / Conteúdo em ${sub}</button>
+            </div>
+
+            <div class="inline-add-form" id="form-add-${sub.replace(/\s+/g, '')}" onclick="event.stopPropagation()">
+              <input type="text" class="inline-input" id="inp-title-${sub.replace(/\s+/g, '')}" placeholder="Nome do Bloco ou Conteúdo">
+              <input type="text" class="inline-input" id="inp-link-${sub.replace(/\s+/g, '')}" placeholder="Link TEC ou Qconcursos">
+              <input type="text" class="inline-input" id="inp-obs-${sub.replace(/\s+/g, '')}" placeholder="Obs (Opcional)">
+              <button class="btn-auth-submit" style="padding:0.4rem 0.8rem;" onclick="saveNewTopic('${sub}')">Salvar</button>
+              <button class="btn-topic-more" onclick="toggleAddForm('${sub}')">✕</button>
+            </div>
+
+            <div class="rows-container" id="rows-${box.id}" style="display:flex; flex-direction:column; gap:0.55rem;"></div>
+          </div>
+        `;
+
+        const rowsContainer = box.querySelector(`#rows-${box.id}`);
+
+        list.forEach(item => {
+          const diff = calcDays(item.lastReview);
+          const st = evalStatus(diff, item.green, item.yellow);
+          const row = document.createElement("div");
+          row.className = `topic-row-item ${st.cls}`;
+          row.onclick = e => e.stopPropagation();
+
+          const daysText = diff !== null ? `${diff} dias` : "Nunca";
+          const linkBadgeHtml = renderLinkBadge(item.link, item.id);
+
+          row.innerHTML = `
+            <div class="topic-info-side">
+              <input type="checkbox" class="check-topic-done" title="Marcar concluído" 
+                ${item.completed ? 'checked' : ''} 
+                onclick="event.stopPropagation()"
+                onchange="setDone('${item.id}', this.checked)">
+
+              <div class="topic-text-group">
+                <span class="topic-title ${item.completed ? 'is-done' : ''}">${item.title}</span>
+                <div class="topic-tags-row">
+                  ${linkBadgeHtml}
+                  ${item.obs ? `<span class="obs-pill">${item.obs}</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="topic-actions-side">
+              <div class="topic-days-box" title="Tempo desde a última revisão">
+                <span class="topic-days-main">${daysText}</span>
+                <span class="topic-days-sub">Rev: ${formatShortDate(item.lastReview)}</span>
+              </div>
+
+              <div class="topic-status-badge">${st.badge}</div>
+
+              <button class="btn-rev-topic" onclick="event.stopPropagation(); markToday('${item.id}')" title="Marcar como revisado hoje">
+                ✓ Revisar
+              </button>
+
+              <button class="btn-topic-more" onclick="event.stopPropagation(); openTopicConfigModal('${item.id}')" title="Configurar prazos e link">⋮</button>
+            </div>
+          `;
+          rowsContainer.appendChild(row);
+        });
+
+        container.appendChild(box);
+      });
+
+      document.getElementById("metricRed").textContent = totRed;
+      document.getElementById("metricYellow").textContent = totYellow;
+      document.getElementById("metricGreen").textContent = totGreen;
+    }
+
+    // Toggle Seguro das Matérias (Imune a cliques internos)
+    function toggleSubject(id, e) {
+      if (e) e.stopPropagation();
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      if (openSubjectIds.has(id)) {
+        openSubjectIds.delete(id);
+        el.classList.remove("open");
+      } else {
+        openSubjectIds.add(id);
+        el.classList.add("open");
+      }
+    }
+
+    function toggleAddForm(sub) {
+      const cleanSub = sub.replace(/\s+/g, '');
+      document.getElementById(`form-add-${cleanSub}`)?.classList.toggle("active");
+    }
+
+    async function saveNewTopic(sub) {
+      const cleanSub = sub.replace(/\s+/g, '');
+      const title = document.getElementById(`inp-title-${cleanSub}`).value.trim();
+      const link = document.getElementById(`inp-link-${cleanSub}`).value.trim();
+      const obs = document.getElementById(`inp-obs-${cleanSub}`).value.trim();
+
+      if (!title) return alert("Digite o nome do conteúdo.");
+
+      const newTopicPayload = {
+        user_id: currentUser.id,
+        subject: sub,
+        title,
+        completed: false,
+        link,
+        obs,
+        last_review: getTodayString(),
+        green_limit: 20,
+        yellow_limit: 30,
+        red_limit: 40
+      };
+
+      const { data, error } = await supabaseClient.from('study_topics').insert(newTopicPayload).select().single();
+      if (!error && data) {
+        topics.push({
+          id: data.id,
+          subject: data.subject,
+          title: data.title,
+          completed: data.completed,
+          link: data.link,
+          obs: data.obs,
+          lastReview: data.last_review,
+          green: data.green_limit,
+          yellow: data.yellow_limit,
+          red: data.red_limit
+        });
+      }
+
+      toggleAddForm(sub);
+      renderAccordions();
+    }
+
+    async function setDone(id, isDone) {
+      const t = topics.find(i => i.id === id);
+      if (t) {
+        t.completed = isDone;
+        renderAccordions();
+        if (currentUser) {
+          await supabaseClient.from('study_topics').update({ completed: isDone }).eq('id', id);
+        }
+      }
+    }
+
+    async function markToday(id) {
+      const t = topics.find(i => i.id === id);
+      if (t) {
+        t.lastReview = getTodayString();
+        renderAccordions();
+        if (currentUser) {
+          await supabaseClient.from('study_topics').update({ last_review: t.lastReview }).eq('id', id);
+        }
+      }
+    }
+
+    function quickAddLink(id) {
+      const item = topics.find(t => t.id === id);
+      if (!item) return;
+
+      const link = prompt("Cole o link do TEC Concursos ou Qconcursos:", item.link || "");
+      if (link !== null) {
+        item.link = link.trim();
+        renderAccordions();
+        if (currentUser) {
+          supabaseClient.from('study_topics').update({ link: item.link }).eq('id', id);
+        }
+      }
+    }
+
+    function openTopicConfigModal(id) {
+      const item = topics.find(t => t.id === id);
+      if (!item) return;
+
+      selectedTopicIdForConfig = id;
+      document.getElementById("topicModalTitle").textContent = item.title;
+      document.getElementById("topicModalLink").value = item.link || "";
+      document.getElementById("topicModalObs").value = item.obs || "";
+      document.getElementById("topicModalYellow").value = item.yellow || 30;
+      document.getElementById("topicModalRed").value = item.red || 40;
+      document.getElementById("topicConfigModal").style.display = "flex";
+    }
+
+    async function saveTopicConfig() {
+      const item = topics.find(t => t.id === selectedTopicIdForConfig);
+      if (item) {
+        item.link = document.getElementById("topicModalLink").value.trim();
+        item.obs = document.getElementById("topicModalObs").value.trim();
+        item.yellow = parseInt(document.getElementById("topicModalYellow").value, 10) || 30;
+        item.red = parseInt(document.getElementById("topicModalRed").value, 10) || 40;
+
+        await supabaseClient.from('study_topics').update({
+          link: item.link,
+          obs: item.obs,
+          yellow_limit: item.yellow,
+          red_limit: item.red
+        }).eq('id', item.id);
+
+        closeModal("topicConfigModal");
+        renderAccordions();
+      }
+    }
+
+    async function deleteCurrentTopic() {
+      if (confirm("Deseja realmente excluir este assunto?")) {
+        topics = topics.filter(t => t.id !== selectedTopicIdForConfig);
+        await supabaseClient.from('study_topics').delete().eq('id', selectedTopicIdForConfig);
+        closeModal("topicConfigModal");
+        renderAccordions();
+      }
+    }
+
+    /* ==========================================================
+       GERENCIAMENTO DE DISCIPLINAS (INCLUIR / DELETAR MATÉRIA)
+       ========================================================== */
+    function openAddNewSubjectModal() {
+      document.getElementById("inpDirectNewSubject").value = "";
+      document.getElementById("inpDirectFirstTopic").value = "";
+      document.getElementById("newSubjectModal").style.display = "flex";
+    }
+
+    async function saveDirectNewSubject() {
+      const subName = document.getElementById("inpDirectNewSubject").value.trim().toUpperCase();
+      const firstTopic = document.getElementById("inpDirectFirstTopic").value.trim() || "Conteúdo Geral / Bloco 1";
+
+      if (!subName) return alert("Digite o nome da matéria.");
+
+      if (!registeredSubjectList.includes(subName)) {
+        registeredSubjectList.push(subName);
+      }
+
+      const newTopicPayload = {
+        user_id: currentUser.id,
+        subject: subName,
+        title: firstTopic,
+        completed: false,
+        link: "",
+        obs: "",
+        last_review: getTodayString(),
+        green_limit: 20,
+        yellow_limit: 30,
+        red_limit: 40
+      };
+
+      const { data, error } = await supabaseClient.from('study_topics').insert(newTopicPayload).select().single();
+      if (!error && data) {
+        topics.push({
+          id: data.id,
+          subject: data.subject,
+          title: data.title,
+          completed: data.completed,
+          link: data.link,
+          obs: data.obs,
+          lastReview: data.last_review,
+          green: data.green_limit,
+          yellow: data.yellow_limit,
+          red: data.red_limit
+        });
+      }
+
+      openSubjectIds.add(`box-${subName.replace(/\s+/g, '')}`);
+      populateDropdowns();
+      closeModal("newSubjectModal");
+      renderAccordions();
+    }
+
+    function openManageSubjectsModal() {
+      const container = document.getElementById("manageSubjectsList");
+      container.innerHTML = "";
+
+      const currentUniqueSubs = Array.from(new Set(topics.map(t => t.subject)));
+
+      if (currentUniqueSubs.length === 0) {
+        container.innerHTML = "<div style='font-size:0.8rem; color:var(--text-muted);'>Nenhuma matéria cadastrada.</div>";
+      }
+
+      currentUniqueSubs.forEach(sub => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:var(--surface-subtle); padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border);";
+        row.innerHTML = `
+          <span style="font-size:0.82rem; font-weight:800;">${sub}</span>
+          <button class="btn-topic-more" style="width:28px; height:28px; color:#e11d48;" onclick="deleteSubjectEntirely('${sub}')" title="Excluir Matéria">🗑️</button>
+        `;
+        container.appendChild(row);
+      });
+
+      document.getElementById("manageSubjectsModal").style.display = "flex";
+    }
+
+    async function deleteSubjectEntirely(sub) {
+      if (confirm(`Tem certeza que deseja apagar a matéria "${sub}" e TODOS os seus conteúdos?`)) {
+        topics = topics.filter(t => t.subject !== sub);
+        registeredSubjectList = registeredSubjectList.filter(s => s !== sub);
+
+        studyCycle.forEach(c => {
+          c.subjects = c.subjects.filter(s => s !== sub);
+        });
+
+        if (currentUser) {
+          await supabaseClient.from('study_topics').delete().eq('user_id', currentUser.id).eq('subject', sub);
+          await supabaseClient.from('user_settings').update({ cycle_config: studyCycle }).eq('user_id', currentUser.id);
+        }
+
+        populateDropdowns();
+        openManageSubjectsModal();
+        renderDaysStrip();
+        renderAccordions();
+      }
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = "none";
+    }
+
+    /* ==========================================================
+       CRONÔMETRO FLUTUANTE (COM OPÇÃO DE ENTRADA MANUAL)
+       ========================================================== */
+    let timerInterval = null;
+    let timerSeconds = 0;
+    let timerRunning = false;
+    let timerMode = "up"; // 'up', 'down', 'manual'
+    let countdownTarget = 3600;
+
+    function toggleCornerTimer() {
+      const el = document.getElementById("floatingTimerCorner");
+      el.style.display = (el.style.display === "flex") ? "none" : "flex";
+      document.getElementById("manualStudyDate").value = getTodayString();
+    }
+
+    function setTimerMode(mode) {
+      timerMode = mode;
+      document.getElementById("btnCornerModeUp").classList.toggle("active", mode === "up");
+      document.getElementById("btnCornerModeDown").classList.toggle("active", mode === "down");
+      document.getElementById("btnCornerModeManual").classList.toggle("active", mode === "manual");
+
+      const autoArea = document.getElementById("timerAutoArea");
+      const manualArea = document.getElementById("timerManualArea");
+      const countdownGroup = document.getElementById("countdownPresetGroup");
+
+      if (mode === "manual") {
+        autoArea.style.display = "none";
+        manualArea.style.display = "flex";
+        pauseTimer();
+      } else {
+        autoArea.style.display = "block";
+        manualArea.style.display = "none";
+        countdownGroup.style.display = (mode === "down") ? "flex" : "none";
+        timerSeconds = (mode === "down") ? countdownTarget : 0;
+        updateCornerDisplay();
+      }
+    }
+
+    function setCountdownMinutes(min) {
+      countdownTarget = min * 60;
+      timerSeconds = countdownTarget;
+      updateCornerDisplay();
+    }
+
+    function formatTime(sec) {
+      const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+      const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function updateCornerDisplay() {
+      const str = formatTime(timerSeconds);
+      document.getElementById("cornerTimerDisplay").textContent = str;
+      document.getElementById("headerTimerQuickLabel").textContent = timerRunning ? str : "Cronômetro";
+    }
+
+    function startTimer() {
+      if (timerRunning) return;
+      timerRunning = true;
+      document.getElementById("btnTimerStart").style.display = "none";
+      document.getElementById("btnTimerPause").style.display = "inline-block";
+
+      timerInterval = setInterval(() => {
+        if (timerMode === "up") {
+          timerSeconds++;
+        } else if (timerMode === "down") {
+          if (timerSeconds > 0) {
+            timerSeconds--;
+          } else {
+            pauseTimer();
+            alert("Tempo de estudo finalizado!");
+          }
+        }
+        updateCornerDisplay();
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      timerRunning = false;
+      clearInterval(timerInterval);
+      document.getElementById("btnTimerStart").style.display = "inline-block";
+      document.getElementById("btnTimerPause").style.display = "none";
+      updateCornerDisplay();
+    }
+
+    async function finishTimer() {
+      pauseTimer();
+      const subject = document.getElementById("cornerSubjectSelect").value;
+      const spent = (timerMode === "up") ? timerSeconds : (countdownTarget - timerSeconds);
+
+      if (!subject) return alert("Selecione ou cadastre uma matéria antes de salvar.");
+
+      if (spent >= 10 && currentUser) {
+        await supabaseClient.from('study_sessions').insert({
+          user_id: currentUser.id,
+          subject,
+          seconds: spent,
+          study_date: getTodayString()
+        });
+        alert(`Sessão salva: ${formatDuration(spent)} em ${subject}!`);
+      }
+
+      timerSeconds = 0;
+      updateCornerDisplay();
+      toggleCornerTimer();
+    }
+
+    // SALVAR LANÇAMENTO MANUAL DE ESTUDO
+    async function saveManualStudySession() {
+      const hours = parseInt(document.getElementById("manualHours").value, 10) || 0;
+      const minutes = parseInt(document.getElementById("manualMinutes").value, 10) || 0;
+      const subject = document.getElementById("manualSubjectSelect").value;
+      const studyDate = document.getElementById("manualStudyDate").value || getTodayString();
+
+      const totalSeconds = (hours * 3600) + (minutes * 60);
+
+      if (totalSeconds <= 0) return alert("Insira um tempo válido (horas ou minutos).");
+      if (!subject) return alert("Selecione uma matéria.");
+
+      if (currentUser) {
+        await supabaseClient.from('study_sessions').insert({
+          user_id: currentUser.id,
+          subject,
+          seconds: totalSeconds,
+          study_date: studyDate
+        });
+        alert(`Registrado com sucesso: ${formatDuration(totalSeconds)} em ${subject} no dia ${formatShortDate(studyDate)}!`);
+      }
+
+      toggleCornerTimer();
+    }
+
+    /* ==========================================================
+       PÁGINA EXCLUSIVA DE ESTATÍSTICAS (HORAS E MINUTOS PRECISOS)
+       ========================================================== */
+    function showStatsPage() {
+      document.getElementById("appView").style.display = "none";
+      document.getElementById("statsView").style.display = "block";
+      renderFullStats();
+    }
+
+    function hideStatsPage() {
+      document.getElementById("statsView").style.display = "none";
+      document.getElementById("appView").style.display = "block";
+    }
+
+    async function renderFullStats() {
+      if (!currentUser) return;
+
+      const { data: history } = await supabaseClient
+        .from('study_sessions')
+        .select('*')
+        .eq('user_id', currentUser.id);
+
+      const sessions = history || [];
+      const todayStr = getTodayString();
+      const now = new Date();
+
+      let todaySec = 0, last15Sec = 0, monthSec = 0, totalSec = 0;
+      const curMonth = now.getMonth(), curYear = now.getFullYear();
+
+      sessions.forEach(item => {
+        const [y, m, d] = item.study_date.split("-");
+        const dt = new Date(y, m - 1, d);
+        const diff = Math.floor((now - dt) / (1000 * 60 * 60 * 24));
+
+        totalSec += item.seconds;
+        if (item.study_date === todayStr) todaySec += item.seconds;
+        if (diff <= 15) last15Sec += item.seconds;
+        if (dt.getMonth() === curMonth && dt.getFullYear() === curYear) monthSec += item.seconds;
+      });
+
+      document.getElementById("fullStatToday").textContent = formatDuration(todaySec);
+      document.getElementById("fullStat15Days").textContent = formatDuration(last15Sec);
+      document.getElementById("fullStatMonth").textContent = formatDuration(monthSec);
+      document.getElementById("fullStatTotal").textContent = formatDuration(totalSec);
+
+      // Gráfico Semanal com Minutagem Precisa
+      const chart = document.getElementById("fullStatsWeekChart");
+      chart.innerHTML = "";
+      const daysAbbr = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+      const daySeconds = [0,0,0,0,0,0,0];
+
+      sessions.forEach(item => {
+        const [y, m, d] = item.study_date.split("-");
+        const date = new Date(y, m - 1, d);
+        const diff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+        if (diff < 7) {
+          const idx = (date.getDay() + 6) % 7;
+          daySeconds[idx] += item.seconds;
+        }
+      });
+
+      const maxSec = Math.max(...daySeconds, 3600);
+
+      daysAbbr.forEach((name, idx) => {
+        const s = daySeconds[idx];
+        const hPercent = Math.min(100, Math.round((s / maxSec) * 100));
+        const col = document.createElement("div");
+        col.className = "chart-col";
+        col.innerHTML = `
+          <div class="chart-val">${s > 0 ? formatDuration(s) : ''}</div>
+          <div class="chart-bar" style="height:${Math.max(6, hPercent)}%;"></div>
+          <div class="chart-label">${name}</div>
+        `;
+        chart.appendChild(col);
+      });
+    }
+
+    async function filterCustomStats() {
+      const start = document.getElementById("statsDateStart").value;
+      const end = document.getElementById("statsDateEnd").value;
+      const res = document.getElementById("statsCustomResult");
+
+      if (!start || !end) return alert("Selecione ambas as datas.");
+
+      const { data: history } = await supabaseClient
+        .from('study_sessions')
+        .select('seconds')
+        .eq('user_id', currentUser.id)
+        .gte('study_date', start)
+        .lte('study_date', end);
+
+      const totalSec = (history || []).reduce((acc, cur) => acc + cur.seconds, 0);
+      res.textContent = `Total no período (${start} até ${end}): ${formatDuration(totalSec)} estudados.`;
+    }
+
+    /* ==========================================================
+       AVATAR & TEMA (CHAVINHA SOL / LUA)
+       ========================================================== */
+    function triggerAvatarUpload() {
+      document.getElementById("avatarFileInput").click();
+    }
+
+    async function handleAvatarChange(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = async ev => {
+          const base64 = ev.target.result;
+          document.getElementById("profileImg").src = base64;
+          if (currentUser) {
+            await supabaseClient.from('profiles').update({ avatar_url: base64 }).eq('id', currentUser.id);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function handleThemeToggle(isDark) {
+      applyTheme(isDark);
+    }
+
+    function applyTheme(isDark) {
+      if (isDark) {
+        document.documentElement.setAttribute("data-theme", "dark");
+        document.getElementById("themeToggleCheckbox").checked = true;
+        localStorage.setItem("papiro_theme_mode", "dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+        document.getElementById("themeToggleCheckbox").checked = false;
+        localStorage.setItem("papiro_theme_mode", "light");
+      }
+    }
+
+    if (localStorage.getItem("papiro_theme_mode") === "dark") {
+      applyTheme(true);
+    }
+
+    async function checkActiveSupabaseSession() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        await loadUserDataAndBootstrap();
+      }
+    }
+
+    checkActiveSupabaseSession();
+  </script>
+</body>
+</html>
