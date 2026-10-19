@@ -31,6 +31,9 @@ export interface UserProfile {
   email: string;
   project_name: string;
   avatar_url?: string;
+  exam_published?: boolean;
+  exam_date?: string;
+  exam_days?: number | null;
 }
 
 export type TimerMode = 'up' | 'down' | 'manual';

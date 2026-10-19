@@ -18,6 +18,7 @@ export const TopicConfigModal: React.FC<TopicConfigModalProps> = ({
   const [obs, setObs] = useState('');
   const [yellow, setYellow] = useState(30);
   const [red, setRed] = useState(40);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (topic) {
@@ -25,6 +26,7 @@ export const TopicConfigModal: React.FC<TopicConfigModalProps> = ({
       setObs(topic.obs || '');
       setYellow(topic.yellow || 30);
       setRed(topic.red || 40);
+      setConfirmDelete(false);
     }
   }, [topic]);
 
@@ -40,11 +42,9 @@ export const TopicConfigModal: React.FC<TopicConfigModalProps> = ({
     onClose();
   };
 
-  const handleDelete = () => {
-    if (confirm("Deseja realmente excluir este assunto?")) {
-      onDelete(topic.id);
-      onClose();
-    }
+  const handleExecuteDelete = () => {
+    onDelete(topic.id);
+    onClose();
   };
 
   return (
@@ -101,17 +101,42 @@ export const TopicConfigModal: React.FC<TopicConfigModalProps> = ({
           </div>
         </div>
 
-        <div className="flex justify-between gap-2 mt-2">
-          <button className="btn-auth-submit flex-1" onClick={handleSave}>
-            Salvar Alterações
-          </button>
-          <button
-            className="btn-auth-submit bg-[#e11d48] hover:bg-[#be123c]"
-            onClick={handleDelete}
-          >
-            Excluir Assunto
-          </button>
-        </div>
+        {confirmDelete ? (
+          <div className="bg-[var(--status-red-bg)] border border-[var(--status-red-border)] p-3 rounded-lg text-center mt-2 flex flex-col gap-2">
+            <span className="text-xs font-bold text-[var(--status-red-text)]">
+              Tem certeza que deseja excluir definitivamente este assunto?
+            </span>
+            <div className="flex gap-2 justify-center">
+              <button
+                type="button"
+                className="btn-auth-submit bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] py-1 px-3 text-xs"
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-auth-submit bg-[#e11d48] text-white py-1 px-3 text-xs"
+                onClick={handleExecuteDelete}
+              >
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-between gap-2 mt-2">
+            <button className="btn-auth-submit flex-1" onClick={handleSave}>
+              Salvar Alterações
+            </button>
+            <button
+              type="button"
+              className="btn-auth-submit bg-[#e11d48] hover:bg-[#be123c]"
+              onClick={() => setConfirmDelete(true)}
+            >
+              Excluir Assunto
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

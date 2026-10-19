@@ -56,6 +56,13 @@ export function formatShortDate(dateStr?: string | null): string {
   return `${parts[2]}/${parts[1]}`;
 }
 
+export function formatFullDateBR(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length < 3) return dateStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
 export function getTodayString(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -70,8 +77,18 @@ export function getCycleDayIndexForDate(targetDate: Date | string): number {
   return (((diffDays % 7) + 7) % 7);
 }
 
-export function getDaysUntilExam(targetDateStr = "2027-02-17T00:00:00"): number {
-  const exam = new Date(targetDateStr);
+export function getDaysUntilExam(targetDateStr = "2027-02-17"): number {
+  if (!targetDateStr) return 0;
+  // Support both YYYY-MM-DD and full ISO strings
+  const cleanDateStr = targetDateStr.split('T')[0];
+  const parts = cleanDateStr.split('-');
+  if (parts.length !== 3) return 0;
+
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+
+  const exam = new Date(y, m - 1, d);
   const today = new Date();
   exam.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);

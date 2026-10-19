@@ -8,6 +8,8 @@ interface HeaderProps {
   onOpenEditProfile: () => void;
   onAvatarUpload: (base64: string) => void;
   onLogout: () => void;
+  onSyncNow?: () => void;
+  isSyncing?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,7 +18,9 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   onOpenEditProfile,
   onAvatarUpload,
-  onLogout
+  onLogout,
+  onSyncNow,
+  isSyncing = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,11 +72,33 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <div className="header-center">
-        <h1 className="header-center-title">{user.project_name || "MEU PROJETO"}</h1>
+      <div
+        className="header-center cursor-pointer hover:opacity-90 transition-opacity"
+        onClick={onOpenEditProfile}
+        title="Clique para editar o nome do concurso / projeto"
+      >
+        <h1 className="header-center-title inline-flex items-center gap-1.5">
+          <span>{user.project_name || "MEU PROJETO"}</span>
+          <span className="text-xs opacity-60">✏️</span>
+        </h1>
       </div>
 
       <div className="header-right">
+        {onSyncNow && (
+          <button
+            type="button"
+            className="btn-sync-header"
+            onClick={onSyncNow}
+            title="Sincronizar dados em tempo real com todos os dispositivos"
+            disabled={isSyncing}
+          >
+            <span className={isSyncing ? "animate-spin inline-block" : ""}>🔄</span>
+            <span className="hidden sm:inline text-xs font-bold">
+              {isSyncing ? "Sincronizando..." : "Sincronizar"}
+            </span>
+          </button>
+        )}
+
         <label className="theme-switch" title="Alternar tema Claro/Escuro">
           <input
             type="checkbox"

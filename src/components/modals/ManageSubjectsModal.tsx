@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface ManageSubjectsModalProps {
   isOpen: boolean;
@@ -13,11 +13,14 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
   subjects,
   onDeleteSubject
 }) => {
+  const [subjectPendingDelete, setSubjectPendingDelete] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
-  const handleDelete = (sub: string) => {
-    if (confirm(`Tem certeza que deseja apagar a matéria "${sub}" e TODOS os seus conteúdos?`)) {
-      onDeleteSubject(sub);
+  const handleConfirmDelete = () => {
+    if (subjectPendingDelete) {
+      onDeleteSubject(subjectPendingDelete);
+      setSubjectPendingDelete(null);
     }
   };
 
@@ -33,6 +36,30 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
           Atenção: Ao excluir uma matéria, todos os seus conteúdos cadastrados também serão excluídos.
         </p>
 
+        {subjectPendingDelete && (
+          <div className="bg-[var(--status-red-bg)] border border-[var(--status-red-border)] p-3 rounded-lg text-center flex flex-col gap-2">
+            <span className="text-xs font-bold text-[var(--status-red-text)]">
+              Apagar a matéria "{subjectPendingDelete}" e TODOS os seus conteúdos associados?
+            </span>
+            <div className="flex gap-2 justify-center">
+              <button
+                type="button"
+                className="btn-auth-submit bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] py-1 px-3 text-xs"
+                onClick={() => setSubjectPendingDelete(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-auth-submit bg-[#e11d48] text-white py-1 px-3 text-xs"
+                onClick={handleConfirmDelete}
+              >
+                Sim, Excluir Matéria
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto pr-1">
           {subjects.length === 0 ? (
             <div className="text-xs text-[var(--text-muted)] py-4 text-center">
@@ -47,7 +74,7 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
                 <span className="text-xs font-extrabold">{sub}</span>
                 <button
                   className="btn-topic-more w-7 h-7 text-xs text-[#e11d48] hover:border-[#e11d48]"
-                  onClick={() => handleDelete(sub)}
+                  onClick={() => setSubjectPendingDelete(sub)}
                   title="Excluir Matéria"
                 >
                   🗑️

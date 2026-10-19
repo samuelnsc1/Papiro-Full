@@ -22,7 +22,9 @@ export const NewSubjectModal: React.FC<NewSubjectModalProps> = ({
       alert("Digite o nome da matéria.");
       return;
     }
-    onAddSubject(cleanSub, firstTopic.trim() || "Conteúdo Geral / Bloco 1");
+    // Only pass firstTopic if the user explicitly typed something! Do NOT auto-insert placeholder topics!
+    const topicToAdd = firstTopic.trim() ? firstTopic.trim() : undefined;
+    onAddSubject(cleanSub, topicToAdd);
     setSubjectName('');
     setFirstTopic('');
     onClose();
@@ -46,6 +48,7 @@ export const NewSubjectModal: React.FC<NewSubjectModalProps> = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSave();
             }}
+            autoFocus
           />
         </div>
 
@@ -53,15 +56,34 @@ export const NewSubjectModal: React.FC<NewSubjectModalProps> = ({
           <label>Primeiro Conteúdo / Bloco Inicial (Opcional)</label>
           <input
             type="text"
-            placeholder="Ex: Introdução e Princípios"
+            placeholder="Deixe em branco se quiser adicionar depois"
             value={firstTopic}
             onChange={(e) => setFirstTopic(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSave();
+            }}
           />
+          <span className="text-[11px] text-[var(--text-muted)] mt-0.5">
+            Opcional. Se deixar vazio, a matéria será criada limpa e vazia para você cadastrar seus tópicos quando quiser.
+          </span>
         </div>
 
-        <button className="btn-auth-submit" onClick={handleSave}>
-          Cadastrar Matéria
-        </button>
+        <div className="modal-actions mt-2">
+          <button
+            type="button"
+            className="btn-modal-cancel"
+            onClick={onClose}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="btn-modal-save"
+            onClick={handleSave}
+          >
+            Cadastrar Matéria
+          </button>
+        </div>
       </div>
     </div>
   );
