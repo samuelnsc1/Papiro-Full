@@ -421,21 +421,22 @@ header {
   background: var(--surface-subtle);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 0.45rem 0.75rem;
+  width: 34px;
+  height: 34px;
   border-radius: 8px;
-  font-size: 0.78rem;
-  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
   transition: all 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
 }
 
 .btn-sync-header:hover {
   background: var(--surface);
   border-color: var(--primary);
-  color: var(--primary);
+  transform: scale(1.05);
 }
 
 /* Calendar Hero */
@@ -447,59 +448,61 @@ header {
   border: 1px solid var(--cal-card-border);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.85rem;
   width: 100%;
 }
 
 .hero-top-info {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.hero-top-info .label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #38bdf8;
-  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-bottom: 0.2rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.hero-top-info .active-subjects {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #ffffff;
-  line-height: 1.3;
-}
-
-.empty-cycle-hint {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #fde047;
+.hero-badges-wrapper {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hero-program-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #38bdf8;
+  white-space: nowrap;
+}
+
+.hero-cycle-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  white-space: nowrap;
 }
 
 .hero-controls {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .hero-today-tag {
   background: rgba(56, 189, 248, 0.15);
   color: #38bdf8;
   border: 1px solid rgba(56, 189, 248, 0.3);
-  padding: 0.35rem 0.75rem;
+  padding: 0.3rem 0.65rem;
   border-radius: 6px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .btn-dots-menu {
@@ -516,15 +519,72 @@ header {
   font-size: 1.2rem;
   font-weight: 800;
   line-height: 1;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-dots-menu:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.hero-subjects-container {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+.hero-active-subjects-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.hero-subject-pill {
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.empty-cycle-hint {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fde047;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(253, 224, 71, 0.1);
+  border: 1px dashed rgba(253, 224, 71, 0.35);
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.empty-cycle-hint:hover {
+  background: rgba(253, 224, 71, 0.18);
+}
+
+.days-strip-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 0.25rem;
 }
 
 .days-strip {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(105px, 1fr));
   gap: 0.55rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 0.2rem;
+  min-width: 720px;
 }
 
 .day-cell {
@@ -1400,8 +1460,69 @@ header {
     border-top: 1px dashed var(--border);
     padding-top: 0.5rem;
   }
+  .calendar-hero-card {
+    padding: 1.05rem 0.85rem;
+    gap: 0.75rem;
+  }
+  .hero-top-info {
+    gap: 0.5rem;
+  }
+  .hero-badges-wrapper {
+    gap: 0.35rem;
+  }
+  .hero-program-title {
+    font-size: 0.66rem;
+  }
+  .hero-cycle-badge {
+    font-size: 0.66rem;
+    padding: 0.12rem 0.45rem;
+  }
+  .hero-today-tag {
+    font-size: 0.66rem;
+    padding: 0.25rem 0.5rem;
+  }
+  .hero-subject-pill {
+    font-size: 0.95rem;
+    padding: 0.28rem 0.65rem;
+  }
   .metrics-trio {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+  }
+  .metric-card {
+    padding: 0.7rem 0.3rem;
+  }
+  .metric-card .val {
+    font-size: 1.35rem;
+  }
+  .metric-card .lbl {
+    font-size: 0.66rem;
+  }
+  .exam-countdown-box {
+    padding: 0.9rem 0.75rem;
+  }
+  .exam-countdown-box .counter-number {
+    font-size: 2.1rem;
+  }
+  .exam-countdown-box .counter-label {
+    font-size: 0.75rem;
+  }
+  .profile-user-name {
+    font-size: 0.82rem;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .profile-user-email {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .btn-sync-header {
+    width: 32px;
+    height: 32px;
   }
   .floating-timer-corner {
     top: auto;

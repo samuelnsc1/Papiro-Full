@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div
             className="profile-name-row"
             onClick={onOpenEditProfile}
-            title="Clique para editar seu nome ou concurso"
+            title="Clique para editar seu nome, concurso e data da prova"
           >
             <span className="profile-user-name">{user.name || "Concurseiro"}</span>
             <span className="edit-pencil-icon">✏️</span>
@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div
         className="header-center cursor-pointer hover:opacity-90 transition-opacity"
         onClick={onOpenEditProfile}
-        title="Clique para editar o nome do concurso / projeto"
+        title="Clique para editar o nome do concurso, projeto e prova"
       >
         <h1 className="header-center-title inline-flex items-center gap-1.5">
           <span>{user.project_name || "MEU PROJETO"}</span>
@@ -91,11 +91,9 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onSyncNow}
             title="Sincronizar dados em tempo real com todos os dispositivos"
             disabled={isSyncing}
+            aria-label="Sincronizar dados"
           >
-            <span className={isSyncing ? "animate-spin inline-block" : ""}>🔄</span>
-            <span className="hidden sm:inline text-xs font-bold">
-              {isSyncing ? "Sincronizando..." : "Sincronizar"}
-            </span>
+            <span className={`inline-block text-base leading-none ${isSyncing ? "animate-spin" : ""}`}>🔄</span>
           </button>
         )}
 
@@ -114,7 +112,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           className="btn-logout"
           onClick={onLogout}
-          title="Sair da conta"
+          title="Encerrar sessão com segurança"
         >
           Sair
         </button>

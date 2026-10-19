@@ -625,7 +625,13 @@ export const App: React.FC = () => {
   };
 
   // Profile Save with guaranteed multi-device synchronization (study_topics + user_settings + profiles + auth metadata)
-  const handleSaveProfile = async (name: string, project: string) => {
+  const handleSaveProfile = async (
+    name: string,
+    project: string,
+    examPublished: boolean = true,
+    examDate: string = '2027-02-17',
+    examDays: number | null = null
+  ) => {
     const cleanName = name.trim() || 'Concurseiro';
     const cleanProject = project.trim().toUpperCase() || 'MEU PROJETO';
 
@@ -633,7 +639,10 @@ export const App: React.FC = () => {
     setUserProfile((prev) => ({
       ...prev,
       name: cleanName,
-      project_name: cleanProject
+      project_name: cleanProject,
+      exam_published: examPublished,
+      exam_date: examDate,
+      exam_days: examDays
     }));
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
@@ -680,6 +689,33 @@ export const App: React.FC = () => {
             completed: false
           });
         }
+
+        // Exam config in study_topics
+        const { data: exExam } = await supabase
+          .from('study_topics')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('subject', '__SYSTEM_CONFIG__')
+          .eq('title', '__EXAM_CONFIG__')
+          .maybeSingle();
+
+        const examJson = JSON.stringify({
+          exam_published: examPublished,
+          exam_date: examDate,
+          exam_days: examDays
+        });
+
+        if (exExam?.id) {
+          await supabase.from('study_topics').update({ obs: examJson }).eq('id', exExam.id);
+        } else {
+          await supabase.from('study_topics').insert({
+            user_id: userId,
+            subject: '__SYSTEM_CONFIG__',
+            title: '__EXAM_CONFIG__',
+            obs: examJson,
+            completed: false
+          });
+        }
       } catch (err) {
         console.warn("Error saving system config to study_topics:", err);
       }
@@ -695,23 +731,24 @@ export const App: React.FC = () => {
       }
 
       try {
-        // 4. Persist project_name in PostgreSQL 'user_settings' JSONB
+        // 4. Persist in PostgreSQL 'user_settings' JSONB
         const payload = {
           cycle: studyCycle,
           project_name: cleanProject,
-          exam_published: userProfile.exam_published !== false,
-          exam_date: userProfile.exam_date || '2027-02-17',
-          exam_days: userProfile.exam_days ?? null,
+          exam_published: examPublished,
+          exam_date: examDate,
+          exam_days: examDays,
           registered_subjects: registeredSubjects
         };
         await supabase
           .from('user_settings')
           .upsert({
             user_id: userId,
-            cycle_config: payload
+            cycle_config: payload,
+            exam_date: examDate
           }, { onConflict: 'user_id' });
       } catch (err) {
-        console.warn("Error updating user_settings project_name:", err);
+        console.warn("Error updating user_settings:", err);
       }
 
       try {
@@ -1196,7 +1233,7 @@ export const App: React.FC = () => {
             </button>
           </div>
 
-          {/* 3. Meta da Prova e Diagnóstico (Editável: contagem de dias ou edital não publicado) */}
+          {/* 3. Meta da Prova e Diagnóstico */}
           <MetricsRow
             redCount={redCount}
             yellowCount={yellowCount}
@@ -1204,7 +1241,7 @@ export const App: React.FC = () => {
             examPublished={userProfile.exam_published !== false}
             examDate={userProfile.exam_date || "2027-02-17"}
             examDays={userProfile.exam_days}
-            onOpenExamConfig={() => setIsExamConfigOpen(true)}
+            onOpenExamConfig={() => setIsEditProfileOpen(true)}
           />
 
           {/* 4. Edital Verticalizado */}
@@ -1270,6 +1307,9 @@ export const App: React.FC = () => {
         onClose={() => setIsEditProfileOpen(false)}
         currentName={userProfile.name}
         currentProject={userProfile.project_name}
+        currentPublished={userProfile.exam_published !== false}
+        currentExamDate={userProfile.exam_date || "2027-02-17"}
+        currentExamDays={userProfile.exam_days ?? null}
         onSave={handleSaveProfile}
       />
 

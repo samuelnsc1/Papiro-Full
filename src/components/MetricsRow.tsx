@@ -8,7 +8,7 @@ interface MetricsRowProps {
   examPublished?: boolean;
   examDate?: string;
   examDays?: number | null;
-  onOpenExamConfig: () => void;
+  onOpenExamConfig?: () => void;
 }
 
 export const MetricsRow: React.FC<MetricsRowProps> = ({
@@ -38,22 +38,10 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
   return (
     <div className="exam-metrics-row">
       <div
-        className="exam-countdown-box cursor-pointer hover:shadow-md transition-all relative group"
+        className="exam-countdown-box cursor-pointer hover:shadow-md transition-all relative"
         onClick={onOpenExamConfig}
-        title="Clique para editar a data da prova ou marcar Edital Não Publicado"
+        title="Meta da Prova (para alterar, clique no lápis ao lado do seu nome no topo)"
       >
-        <button
-          type="button"
-          className="absolute top-2 right-2 text-xs bg-[var(--surface-subtle)] hover:bg-[var(--surface)] text-[var(--text-muted)] border border-[var(--border)] rounded-md px-1.5 py-0.5 opacity-80 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-bold"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenExamConfig();
-          }}
-        >
-          <span>✏️</span>
-          <span className="text-[10px]">Editar</span>
-        </button>
-
         <div className={`counter-number ${!isPublished ? 'text-3xl' : ''}`}>
           {displayValue}
         </div>
