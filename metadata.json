@@ -1,0 +1,8 @@
+{
+  "name": "Papiro Full",
+  "description": "Gestão Inteligente de Estudos, Ciclo de 7 Dias, Edital Verticalizado e Cronômetro de Revisões",
+  "version": "1.0.0",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
