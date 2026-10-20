@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getDaysUntilExam, formatFullDateBR } from '../../utils/formatters';
+import { Pencil, Calendar, Clock, FileText } from 'lucide-react';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface EditProfileModalProps {
     examDate: string,
     examDays: number | null
   ) => Promise<void> | void;
+  onOpenEdital?: () => void;
 }
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
@@ -26,7 +28,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   currentPublished = true,
   currentExamDate = "2027-02-17",
   currentExamDays = null,
-  onSave
+  onSave,
+  onOpenEdital
 }) => {
   const [name, setName] = useState('');
   const [project, setProject] = useState('');
@@ -101,7 +104,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     <div className="modal-overlay">
       <div className="modal-card max-w-[500px]">
         <div className="modal-header">
-          <h3 className="modal-title">✏️ Perfil, Concurso & Data da Prova</h3>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border)] flex items-center justify-center text-[var(--text)]">
+              <Pencil className="w-3.5 h-3.5" />
+            </div>
+            <h3 className="modal-title">Perfil, Concurso & Prova</h3>
+          </div>
           <button className="btn-close-modal" onClick={onClose} disabled={isSaving}>✕</button>
         </div>
 
@@ -138,6 +146,26 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             />
           </div>
 
+          {/* Link para Edital */}
+          {onOpenEdital && (
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-sky-500" />
+                <span className="text-xs font-semibold text-[var(--text)]">Documento do Edital</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenEdital();
+                }}
+                className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold"
+              >
+                Gerenciar Edital →
+              </button>
+            </div>
+          )}
+
           {/* 3. Situação do Edital */}
           <div className="border-t border-[var(--border)] pt-3">
             <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-2">
@@ -147,31 +175,34 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <div className="grid grid-cols-2 gap-2 mb-3">
               <button
                 type="button"
-                className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center ${
+                className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                   isPublished
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    ? 'bg-slate-800 text-white border-slate-700 shadow-sm dark:bg-slate-700 dark:border-slate-600'
                     : 'bg-[var(--surface-subtle)] text-[var(--text-muted)] border-[var(--border)] hover:bg-[var(--surface)]'
                 }`}
                 onClick={() => setIsPublished(true)}
               >
-                📅 Edital Publicado
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Edital Publicado</span>
               </button>
               <button
                 type="button"
-                className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center ${
+                className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                   !isPublished
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                    ? 'bg-slate-800 text-white border-slate-700 shadow-sm dark:bg-slate-700 dark:border-slate-600'
                     : 'bg-[var(--surface-subtle)] text-[var(--text-muted)] border-[var(--border)] hover:bg-[var(--surface)]'
                 }`}
                 onClick={() => setIsPublished(false)}
               >
-                ⏳ Edital Não Publicado
+                <Clock className="w-3.5 h-3.5" />
+                <span>Edital Não Publicado</span>
               </button>
             </div>
 
             {!isPublished ? (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
-                O quadro exibirá <strong>"Edital ainda não publicado"</strong> com o ícone de ampulheta (⏳).
+              <div className="p-3 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border)] text-[var(--text-muted)] text-xs flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <span>O card exibirá <strong>"Edital ainda não publicado"</strong> até que uma data de prova seja definida.</span>
               </div>
             ) : (
               <div className="flex flex-col gap-3 p-3 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border)]">
@@ -180,14 +211,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   <div className="inline-flex rounded-md border border-[var(--border)] p-0.5 bg-[var(--surface)]">
                     <button
                       type="button"
-                      className={`px-2 py-0.5 rounded text-[11px] font-bold ${inputMode === 'date' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)]'}`}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold ${inputMode === 'date' ? 'bg-slate-700 text-white' : 'text-[var(--text-muted)]'}`}
                       onClick={() => setInputMode('date')}
                     >
                       Por Data
                     </button>
                     <button
                       type="button"
-                      className={`px-2 py-0.5 rounded text-[11px] font-bold ${inputMode === 'days' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)]'}`}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold ${inputMode === 'days' ? 'bg-slate-700 text-white' : 'text-[var(--text-muted)]'}`}
                       onClick={() => setInputMode('days')}
                     >
                       Por Dias

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
 
 interface NewSubjectModalProps {
   isOpen: boolean;
@@ -34,7 +35,10 @@ export const NewSubjectModal: React.FC<NewSubjectModalProps> = ({
     <div className="modal-overlay">
       <div className="modal-card max-w-[440px]">
         <div className="modal-header">
-          <h3 className="modal-title">➕ Cadastrar Nova Matéria</h3>
+          <h3 className="modal-title flex items-center gap-2">
+            <Plus className="w-4 h-4 text-[var(--text-muted)]" />
+            <span>Cadastrar Nova Matéria</span>
+          </h3>
           <button className="btn-close-modal" onClick={onClose}>✕</button>
         </div>
 

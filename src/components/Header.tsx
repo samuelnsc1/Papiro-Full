@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { UserProfile } from '../types';
+import { Pencil, RefreshCw, Sun, Moon, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   user: UserProfile;
@@ -61,25 +62,26 @@ export const Header: React.FC<HeaderProps> = ({
         />
         <div className="profile-meta">
           <div
-            className="profile-name-row"
+            className="profile-name-row group"
             onClick={onOpenEditProfile}
             title="Clique para editar seu nome, concurso e data da prova"
           >
             <span className="profile-user-name">{user.name || "Concurseiro"}</span>
-            <span className="edit-pencil-icon">✏️</span>
+            <span className="edit-pencil-icon p-1 rounded hover:bg-[var(--surface-subtle)] text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors">
+              <Pencil className="w-3.5 h-3.5" />
+            </span>
           </div>
           <span className="profile-user-email">{user.email || ""}</span>
         </div>
       </div>
 
       <div
-        className="header-center cursor-pointer hover:opacity-90 transition-opacity"
+        className="header-center cursor-pointer hover:opacity-80 transition-opacity"
         onClick={onOpenEditProfile}
-        title="Clique para editar o nome do concurso, projeto e prova"
+        title="Clique para editar o nome do concurso, projeto e data da prova"
       >
-        <h1 className="header-center-title inline-flex items-center gap-1.5">
+        <h1 className="header-center-title">
           <span>{user.project_name || "MEU PROJETO"}</span>
-          <span className="text-xs opacity-60">✏️</span>
         </h1>
       </div>
 
@@ -93,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
             disabled={isSyncing}
             aria-label="Sincronizar dados"
           >
-            <span className={`inline-block text-base leading-none ${isSyncing ? "animate-spin" : ""}`}>🔄</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
           </button>
         )}
 
@@ -104,17 +106,22 @@ export const Header: React.FC<HeaderProps> = ({
             onChange={(e) => onToggleTheme(e.target.checked)}
           />
           <span className="theme-slider">
-            <span className="theme-icon">☀️</span>
-            <span className="theme-icon">🌙</span>
+            <span className="theme-icon flex items-center justify-center">
+              <Sun className="w-3 h-3 text-amber-500" />
+            </span>
+            <span className="theme-icon flex items-center justify-center">
+              <Moon className="w-3 h-3 text-indigo-400" />
+            </span>
           </span>
         </label>
 
         <button
-          className="btn-logout"
+          className="btn-logout flex items-center gap-1.5"
           onClick={onLogout}
           title="Encerrar sessão com segurança"
         >
-          Sair
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Sair</span>
         </button>
       </div>
     </header>

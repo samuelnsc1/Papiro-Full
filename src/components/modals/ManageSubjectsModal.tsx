@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Settings, Trash2 } from 'lucide-react';
 
 interface ManageSubjectsModalProps {
   isOpen: boolean;
@@ -28,7 +29,10 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
     <div className="modal-overlay">
       <div className="modal-card max-w-[480px]">
         <div className="modal-header">
-          <h3 className="modal-title">⚙️ Gerenciar e Excluir Matérias</h3>
+          <h3 className="modal-title flex items-center gap-2">
+            <Settings className="w-4 h-4 text-[var(--text-muted)]" />
+            <span>Gerenciar e Excluir Matérias</span>
+          </h3>
           <button className="btn-close-modal" onClick={onClose}>✕</button>
         </div>
 
@@ -73,11 +77,11 @@ export const ManageSubjectsModal: React.FC<ManageSubjectsModalProps> = ({
               >
                 <span className="text-xs font-extrabold">{sub}</span>
                 <button
-                  className="btn-topic-more w-7 h-7 text-xs text-[#e11d48] hover:border-[#e11d48]"
+                  className="btn-topic-more w-7 h-7 text-xs text-[#e11d48] hover:border-[#e11d48] flex items-center justify-center"
                   onClick={() => setSubjectPendingDelete(sub)}
                   title="Excluir Matéria"
                 >
-                  🗑️
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))

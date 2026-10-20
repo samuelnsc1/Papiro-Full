@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StudySession } from '../types';
 import { formatDuration, getTodayString } from '../utils/formatters';
+import { ArrowLeft, BarChart3, Calendar, Filter } from 'lucide-react';
 
 interface StatsPageProps {
   sessions: StudySession[];
@@ -74,10 +75,14 @@ export const StatsPage: React.FC<StatsPageProps> = ({ sessions, onBack }) => {
   return (
     <div className="stats-page-container">
       <div className="stats-navbar">
-        <button className="btn-back-dashboard" onClick={onBack}>
-          <span>←</span> <span>Voltar ao Ciclo de Estudos</span>
+        <button className="btn-back-dashboard flex items-center gap-1.5" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4" />
+          <span>Voltar ao Ciclo de Estudos</span>
         </button>
-        <h2 className="text-xl font-black">RELATÓRIO DE ESTATÍSTICAS</h2>
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-sky-500" />
+          <h2 className="text-lg font-bold tracking-tight">RELATÓRIO DE ESTATÍSTICAS</h2>
+        </div>
         <div />
       </div>
 
@@ -101,9 +106,12 @@ export const StatsPage: React.FC<StatsPageProps> = ({ sessions, onBack }) => {
       </div>
 
       <div className="chart-box-large">
-        <div className="flex justify-between items-center">
-          <h3 className="text-base font-extrabold">Tempo Estudado na Semana Atual</h3>
-          <span className="text-xs text-[var(--text-muted)] font-bold">Segunda a Domingo</span>
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-sm font-bold flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-sky-500" />
+            <span>Tempo Estudado na Semana Atual</span>
+          </h3>
+          <span className="text-xs text-[var(--text-muted)] font-medium">Segunda a Domingo</span>
         </div>
         <div className="stats-chart-columns">
           {daysAbbr.map((name, idx) => {
@@ -121,10 +129,13 @@ export const StatsPage: React.FC<StatsPageProps> = ({ sessions, onBack }) => {
       </div>
 
       <div className="chart-box-large">
-        <h3 className="text-base font-extrabold">Consulta por Período Personalizado</h3>
+        <h3 className="text-sm font-bold flex items-center gap-1.5 mb-3">
+          <Filter className="w-4 h-4 text-sky-500" />
+          <span>Consulta por Período Personalizado</span>
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
           <div className="form-field">
-            <label>Data Inicial</label>
+            <label className="text-xs font-semibold">Data Inicial</label>
             <input
               type="date"
               value={startDate}
@@ -132,7 +143,7 @@ export const StatsPage: React.FC<StatsPageProps> = ({ sessions, onBack }) => {
             />
           </div>
           <div className="form-field">
-            <label>Data Final</label>
+            <label className="text-xs font-semibold">Data Final</label>
             <input
               type="date"
               value={endDate}
@@ -140,13 +151,13 @@ export const StatsPage: React.FC<StatsPageProps> = ({ sessions, onBack }) => {
             />
           </div>
           <button
-            className="btn-auth-submit py-2 px-5"
+            className="btn-auth-submit py-2 px-5 text-xs font-semibold"
             onClick={handleFilter}
           >
             Filtrar Período
           </button>
         </div>
-        <div className="text-base font-extrabold text-[var(--primary)] mt-2">
+        <div className="text-sm font-semibold text-[var(--text-muted)] mt-3 p-2.5 rounded-lg bg-[var(--surface-subtle)] border border-[var(--border)]">
           {customResult || "Selecione as datas para consultar seu rendimento."}
         </div>
       </div>

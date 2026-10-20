@@ -18,6 +18,8 @@ import { ExamDateModal } from './components/modals/ExamDateModal';
 import { NewSubjectModal } from './components/modals/NewSubjectModal';
 import { ManageSubjectsModal } from './components/modals/ManageSubjectsModal';
 import { LogoutConfirmModal } from './components/modals/LogoutConfirmModal';
+import { EditalModal } from './components/modals/EditalModal';
+import { Timer, BarChart3, FileText } from 'lucide-react';
 
 const DEFAULT_CYCLE: CycleDay[] = [
   { day: 1, subjects: [] },
@@ -57,6 +59,7 @@ export const App: React.FC = () => {
   const [isCycleConfigOpen, setIsCycleConfigOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isExamConfigOpen, setIsExamConfigOpen] = useState(false);
+  const [isEditalOpen, setIsEditalOpen] = useState(false);
   const [isNewSubjectOpen, setIsNewSubjectOpen] = useState(false);
   const [isManageSubjectsOpen, setIsManageSubjectsOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -191,6 +194,7 @@ export const App: React.FC = () => {
       let topicExamPublished: boolean | null = null;
       let topicExamDate: string | null = null;
       let topicExamDays: number | null = null;
+      let topicEdital: any = null;
 
       const loadedTopics: Topic[] = [];
 
@@ -209,6 +213,12 @@ export const App: React.FC = () => {
               if (parsed.exam_days !== undefined) topicExamDays = parsed.exam_days;
             } catch (e) {
               console.warn("Could not parse exam config topic:", e);
+            }
+          } else if (t.title === '__EDITAL_CONFIG__' && t.obs) {
+            try {
+              topicEdital = JSON.parse(t.obs);
+            } catch (e) {
+              console.warn("Could not parse edital config topic:", e);
             }
           }
           return; // Strictly exclude from syllabus topics
@@ -235,6 +245,15 @@ export const App: React.FC = () => {
       const finalExamDate = topicExamDate || dbExamDate || '2027-02-17';
       const finalExamDays = topicExamDays !== null ? topicExamDays : dbExamDays;
 
+      let cachedEdital: any = null;
+      try {
+        const raw = localStorage.getItem(`papiro_edital_${user.id}`);
+        if (raw) cachedEdital = JSON.parse(raw);
+      } catch (e) {
+        console.warn("LocalStorage edital read error:", e);
+      }
+      const finalEdital = topicEdital || cachedEdital || {};
+
       setUserProfile({
         id: user.id,
         name: finalName,
@@ -243,7 +262,12 @@ export const App: React.FC = () => {
         avatar_url: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
         exam_published: finalExamPublished,
         exam_date: finalExamDate,
-        exam_days: finalExamDays
+        exam_days: finalExamDays,
+        edital_title: finalEdital.edital_title || '',
+        edital_url: finalEdital.edital_url || '',
+        edital_notes: finalEdital.edital_notes || '',
+        edital_file_name: finalEdital.edital_file_name || '',
+        edital_file_base64: finalEdital.edital_file_base64 || ''
       });
 
       setTopics(loadedTopics);
@@ -845,6 +869,63 @@ export const App: React.FC = () => {
     }
   };
 
+  // Edital Save Handler (Document, Link, Notes & PDF)
+  const handleSaveEdital = async (data: {
+    edital_title: string;
+    edital_url: string;
+    edital_notes: string;
+    edital_file_name?: string;
+    edital_file_base64?: string;
+  }) => {
+    // 1. Instant React state update
+    setUserProfile((prev) => ({
+      ...prev,
+      edital_title: data.edital_title,
+      edital_url: data.edital_url,
+      edital_notes: data.edital_notes,
+      edital_file_name: data.edital_file_name,
+      edital_file_base64: data.edital_file_base64
+    }));
+
+    // 2. Cache locally immediately for instant reload on any device/offline
+    try {
+      const uid = currentUser?.id || 'guest';
+      localStorage.setItem(`papiro_edital_${uid}`, JSON.stringify(data));
+    } catch (e) {
+      console.warn("LocalStorage edital save error:", e);
+    }
+
+    // 3. Multi-device cloud sync via study_topics __EDITAL_CONFIG__
+    if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+      const userId = currentUser.id;
+      try {
+        const { data: exEdital } = await supabase
+          .from('study_topics')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('subject', '__SYSTEM_CONFIG__')
+          .eq('title', '__EDITAL_CONFIG__')
+          .maybeSingle();
+
+        const editalJson = JSON.stringify(data);
+
+        if (exEdital?.id) {
+          await supabase.from('study_topics').update({ obs: editalJson }).eq('id', exEdital.id);
+        } else {
+          await supabase.from('study_topics').insert({
+            user_id: userId,
+            subject: '__SYSTEM_CONFIG__',
+            title: '__EDITAL_CONFIG__',
+            obs: editalJson,
+            completed: false
+          });
+        }
+      } catch (err) {
+        console.warn("Error saving edital config to study_topics:", err);
+      }
+    }
+  };
+
   // Avatar Upload
   const handleAvatarUpload = async (base64: string) => {
     setUserProfile((prev) => ({
@@ -1179,7 +1260,7 @@ export const App: React.FC = () => {
   // Today's subjects in active cycle
   const todaySubjects = useMemo(() => {
     const cycleIdx = getCycleDayIndexForDate(new Date());
-    const dayItem = studyCycle[cycleIdx];
+    const dayItem = studyCycle.find(c => c.day === cycleIdx + 1) || studyCycle[cycleIdx];
     return dayItem?.subjects || [];
   }, [studyCycle]);
 
@@ -1215,21 +1296,34 @@ export const App: React.FC = () => {
             onOpenCycleConfig={() => setIsCycleConfigOpen(true)}
           />
 
-          {/* 2. Botões: Cronômetro e Estatísticas */}
+          {/* 2. Botões Principais: Cronômetro, Estatísticas e Edital do Concurso */}
           <div className="under-calendar-toolbar">
             <button
-              className="btn-study-action primary-btn"
+              className={`btn-study-action ${timerTickingLabel ? 'ticking' : 'secondary-btn'}`}
               onClick={() => setIsTimerOpen((prev) => !prev)}
+              title="Cronômetro de estudo"
             >
-              <span>⏱️</span>
+              <Timer className="w-4 h-4" />
               <span>{timerTickingLabel || "Cronômetro"}</span>
             </button>
             <button
-              className="btn-study-action"
+              className="btn-study-action secondary-btn"
               onClick={() => setCurrentView('stats')}
+              title="Relatório de tempo e estatísticas"
             >
-              <span>📊</span>
+              <BarChart3 className="w-4 h-4" />
               <span>Estatísticas</span>
+            </button>
+            <button
+              className="btn-study-action secondary-btn relative"
+              onClick={() => setIsEditalOpen(true)}
+              title="Inserir e consultar o Edital do concurso"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Edital</span>
+              {(userProfile.edital_url || userProfile.edital_file_name) && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block ml-0.5" title="Edital anexado" />
+              )}
             </button>
           </div>
 
@@ -1242,6 +1336,8 @@ export const App: React.FC = () => {
             examDate={userProfile.exam_date || "2027-02-17"}
             examDays={userProfile.exam_days}
             onOpenExamConfig={() => setIsEditProfileOpen(true)}
+            onOpenEdital={() => setIsEditalOpen(true)}
+            hasEdital={Boolean(userProfile.edital_url || userProfile.edital_file_name)}
           />
 
           {/* 4. Edital Verticalizado */}
@@ -1311,6 +1407,19 @@ export const App: React.FC = () => {
         currentExamDate={userProfile.exam_date || "2027-02-17"}
         currentExamDays={userProfile.exam_days ?? null}
         onSave={handleSaveProfile}
+        onOpenEdital={() => setIsEditalOpen(true)}
+      />
+
+      <EditalModal
+        isOpen={isEditalOpen}
+        onClose={() => setIsEditalOpen(false)}
+        projectName={userProfile.project_name}
+        currentTitle={userProfile.edital_title}
+        currentUrl={userProfile.edital_url}
+        currentNotes={userProfile.edital_notes}
+        currentFileName={userProfile.edital_file_name}
+        currentFileBase64={userProfile.edital_file_base64}
+        onSave={handleSaveEdital}
       />
 
       <ExamDateModal

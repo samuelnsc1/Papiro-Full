@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getDaysUntilExam, formatFullDateBR } from '../../utils/formatters';
+import { Clock } from 'lucide-react';
 
 interface ExamDateModalProps {
   isOpen: boolean;
@@ -113,7 +114,7 @@ export const ExamDateModal: React.FC<ExamDateModalProps> = ({
                 }`}
                 onClick={() => setIsPublished(false)}
               >
-                <span className="text-lg">⏳</span>
+                <Clock className="w-5 h-5 text-amber-500" />
                 <span>Edital Não Publicado</span>
                 <span className="text-[10px] font-normal opacity-80">(Sem data definida)</span>
               </button>
@@ -207,7 +208,9 @@ export const ExamDateModal: React.FC<ExamDateModalProps> = ({
                 </>
               ) : (
                 <>
-                  <div className="counter-number text-2xl">⏳</div>
+                  <div className="counter-number flex justify-center py-1">
+                    <Clock className="w-8 h-8 text-[var(--text-muted)]" />
+                  </div>
                   <div className="counter-label text-sm font-extrabold text-[var(--text)]">
                     Edital ainda não publicado
                   </div>

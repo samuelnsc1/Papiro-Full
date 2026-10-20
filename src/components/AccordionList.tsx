@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Topic } from '../types';
 import { calcDays, evalStatus, formatShortDate } from '../utils/formatters';
+import { AlertTriangle, Clock, Check, Plus, Settings, Download, Trash2, BookOpen, ExternalLink, ChevronDown } from 'lucide-react';
 
 interface AccordionListProps {
   topics: Topic[];
@@ -91,7 +92,15 @@ export const AccordionList: React.FC<AccordionListProps> = ({
     if (s && !s.startsWith('__')) combinedSubjectsSet.add(s);
   });
 
-  const allSubjects = Array.from(combinedSubjectsSet);
+  // Keep today's subjects at the very top of the list
+  const todayNormalized = (todaySubjects || []).map((s) => (s ? s.trim().toUpperCase() : ''));
+  const allSubjects = Array.from(combinedSubjectsSet).sort((a, b) => {
+    const aIsToday = todayNormalized.includes(a.toUpperCase());
+    const bIsToday = todayNormalized.includes(b.toUpperCase());
+    if (aIsToday && !bIsToday) return -1;
+    if (!aIsToday && bIsToday) return 1;
+    return a.localeCompare(b, 'pt-BR');
+  });
 
   if (allSubjects.length === 0) {
     return (
@@ -99,7 +108,7 @@ export const AccordionList: React.FC<AccordionListProps> = ({
         <div className="section-header">EDITAL VERTICALIZADO E REVISÃO POR BLOCOS</div>
         <div className="accordion-list mt-2">
           <div className="empty-topics-box">
-            <div style={{ fontSize: '2.5rem' }}>📝</div>
+            <BookOpen className="w-10 h-10 text-[var(--text-muted)] opacity-50 mx-auto mb-2" />
             <h3>Nenhuma matéria cadastrada</h3>
             <p>Seu edital está zerado. Clique no botão <strong>+ Nova Matéria</strong> abaixo para cadastrar suas disciplinas e começar!</p>
           </div>
@@ -107,13 +116,16 @@ export const AccordionList: React.FC<AccordionListProps> = ({
 
         <div className="manage-subjects-toolbar">
           <button className="btn-manage-sub" onClick={onOpenAddNewSubject}>
-            <span>➕</span> Nova Matéria
+            <Plus className="w-4 h-4 text-[var(--text-muted)]" />
+            <span>Nova Matéria</span>
           </button>
           <button className="btn-manage-sub" onClick={onOpenManageSubjects}>
-            <span>⚙️</span> Gerenciar / Excluir Matéria
+            <Settings className="w-4 h-4 text-[var(--text-muted)]" />
+            <span>Gerenciar / Excluir Matéria</span>
           </button>
-          <button className="btn-manage-sub text-xs opacity-80" onClick={handleTriggerLoadTRT}>
-            <span>📥</span> Carregar Modelo TRT-3 (Opcional)
+          <button className="btn-manage-sub opacity-80" onClick={handleTriggerLoadTRT}>
+            <Download className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+            <span>Carregar Modelo TRT-3</span>
           </button>
         </div>
       </div>
@@ -181,7 +193,12 @@ export const AccordionList: React.FC<AccordionListProps> = ({
               <div className="subject-header" onClick={() => toggleSubject(sub)}>
                 <div className="header-left-sub">
                   <span className="subject-name">{sub}</span>
-                  {isToday && <span className="chip-today">Estudar Hoje</span>}
+                  {isToday && (
+                    <span className="chip-today">
+                      <span className="chip-today-dot" />
+                      Hoje
+                    </span>
+                  )}
                   <span className="subject-progress-badge">
                     {percent}% ({completedCount}/{list.length})
                   </span>
@@ -191,25 +208,26 @@ export const AccordionList: React.FC<AccordionListProps> = ({
                   {subRed > 0 && (
                     <span className="status-chip red" title={`${subRed} atrasados`}>
                       <span className="chip-text-full">{subRed} atrasados</span>
-                      <span className="chip-text-mobile">⚠️ {subRed}</span>
+                      <span className="chip-text-mobile flex items-center gap-1"><AlertTriangle className="w-2.5 h-2.5" /> {subRed}</span>
                     </span>
                   )}
                   {subYellow > 0 && (
                     <span className="status-chip yellow" title={`${subYellow} atenção`}>
                       <span className="chip-text-full">{subYellow} atenção</span>
-                      <span className="chip-text-mobile">⚡ {subYellow}</span>
+                      <span className="chip-text-mobile flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {subYellow}</span>
                     </span>
                   )}
                   {subGreen > 0 && (
                     <span className="status-chip green" title={`${subGreen} em dia`}>
                       <span className="chip-text-full">{subGreen} em dia</span>
-                      <span className="chip-text-mobile">✓ {subGreen}</span>
+                      <span className="chip-text-mobile flex items-center gap-1"><Check className="w-2.5 h-2.5" /> {subGreen}</span>
                     </span>
                   )}
                   <span className="text-xs font-bold text-[var(--text-muted)]">{list.length}</span>
-                  <span className="text-sm font-extrabold transition-transform duration-200" style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}>
-                    ▼
-                  </span>
+                  <ChevronDown
+                    className="w-4 h-4 text-[var(--text-muted)] transition-transform duration-200"
+                    style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}
+                  />
                 </div>
               </div>
 
@@ -217,13 +235,14 @@ export const AccordionList: React.FC<AccordionListProps> = ({
                 <div className="subject-content">
                   <div className="accordion-action-bar">
                     <button
-                      className="btn-add-topic"
+                      className="btn-add-topic inline-flex items-center gap-1.5"
                       onClick={(e) => {
                         e.stopPropagation();
                         setActiveAddForm(activeAddForm === sub ? null : sub);
                       }}
                     >
-                      + Adicionar Bloco / Conteúdo em {sub}
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Adicionar Bloco / Conteúdo em {sub}</span>
                     </button>
                   </div>
 
@@ -329,10 +348,11 @@ export const AccordionList: React.FC<AccordionListProps> = ({
                                 target="_blank"
                                 rel="noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="link-pill generic"
+                                className="link-pill generic flex items-center gap-1"
                                 title="Abrir Link Externo"
                               >
-                                🔗 ↗
+                                <span>Link</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
                               </a>
                             );
                           }
@@ -385,14 +405,14 @@ export const AccordionList: React.FC<AccordionListProps> = ({
                               </button>
 
                               <button
-                                className="btn-topic-more hover:text-[var(--primary)]"
+                                className="btn-topic-more hover:text-[var(--primary)] flex items-center justify-center"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onOpenTopicConfig(item.id);
                                 }}
                                 title="Configurar prazos e link"
                               >
-                                ⚙️
+                                <Settings className="w-3.5 h-3.5" />
                               </button>
 
                               {deletingTopicId === item.id ? (
@@ -420,14 +440,14 @@ export const AccordionList: React.FC<AccordionListProps> = ({
                                 </div>
                               ) : (
                                 <button
-                                  className="btn-topic-more hover:text-red-600"
+                                  className="btn-topic-more hover:text-red-600 flex items-center justify-center"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setDeletingTopicId(item.id);
                                   }}
                                   title="Excluir este conteúdo"
                                 >
-                                  🗑️
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               )}
                             </div>
@@ -443,16 +463,19 @@ export const AccordionList: React.FC<AccordionListProps> = ({
         })}
       </div>
 
-      {/* Botões de Gerenciar Disciplinas */}
+      {/* Botões de Gerenciar Disciplinas - Minimalistas */}
       <div className="manage-subjects-toolbar">
         <button className="btn-manage-sub" onClick={onOpenAddNewSubject}>
-          <span>➕</span> Nova Matéria
+          <Plus className="w-4 h-4 text-[var(--text-muted)]" />
+          <span>Nova Matéria</span>
         </button>
         <button className="btn-manage-sub" onClick={onOpenManageSubjects}>
-          <span>⚙️</span> Gerenciar / Excluir Matéria
+          <Settings className="w-4 h-4 text-[var(--text-muted)]" />
+          <span>Gerenciar / Excluir Matéria</span>
         </button>
-        <button className="btn-manage-sub text-xs opacity-80" onClick={handleTriggerLoadTRT}>
-          <span>📥</span> Carregar Modelo TRT-3 (Opcional)
+        <button className="btn-manage-sub opacity-80" onClick={handleTriggerLoadTRT}>
+          <Download className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+          <span>Carregar Modelo TRT-3</span>
         </button>
       </div>
     </div>

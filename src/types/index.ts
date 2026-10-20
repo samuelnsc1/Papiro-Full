@@ -34,6 +34,11 @@ export interface UserProfile {
   exam_published?: boolean;
   exam_date?: string;
   exam_days?: number | null;
+  edital_title?: string;
+  edital_url?: string;
+  edital_notes?: string;
+  edital_file_name?: string;
+  edital_file_base64?: string;
 }
 
 export type TimerMode = 'up' | 'down' | 'manual';

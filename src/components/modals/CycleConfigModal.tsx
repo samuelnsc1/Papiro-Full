@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CycleDay } from '../../types';
+import { SlidersHorizontal } from 'lucide-react';
 
 interface CycleConfigModalProps {
   isOpen: boolean;
@@ -93,7 +94,10 @@ export const CycleConfigModal: React.FC<CycleConfigModalProps> = ({
     <div className="modal-overlay">
       <div className="modal-card">
         <div className="modal-header">
-          <h3 className="modal-title">⚙️ Configuração do Ciclo de 7 Dias</h3>
+          <h3 className="modal-title flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-[var(--text-muted)]" />
+            <span>Configuração do Ciclo de 7 Dias</span>
+          </h3>
           <button className="btn-close-modal" onClick={onClose}>✕</button>
         </div>
 

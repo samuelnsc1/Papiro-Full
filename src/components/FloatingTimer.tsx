@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TimerMode } from '../types';
 import { formatTime, formatDuration, getTodayString } from '../utils/formatters';
+import { Clock, Play, Pause, Check, X } from 'lucide-react';
 
 interface FloatingTimerProps {
   isOpen: boolean;
@@ -58,58 +59,69 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({
     return () => clearInterval(interval);
   }, [isRunning, mode]);
 
+  // Sync ticker with external button in dashboard
   useEffect(() => {
     if (isRunning) {
       onTimerTick(formatTime(seconds));
     } else {
       onTimerTick(null);
     }
-  }, [seconds, isRunning, onTimerTick]);
+  }, [isRunning, seconds, onTimerTick]);
 
   const handleModeChange = (newMode: TimerMode) => {
     setIsRunning(false);
     setMode(newMode);
-    if (newMode === 'down') {
-      setSeconds(countdownTarget);
-    } else if (newMode === 'up') {
+    if (newMode === 'up') {
       setSeconds(0);
+    } else if (newMode === 'down') {
+      setSeconds(countdownTarget);
     }
   };
 
   const setCountdownPreset = (mins: number) => {
-    const target = mins * 60;
-    setCountdownTarget(target);
-    setSeconds(target);
+    setIsRunning(false);
+    const secs = mins * 60;
+    setCountdownTarget(secs);
+    setSeconds(secs);
   };
 
   const handleFinishTimer = () => {
-    setIsRunning(false);
-    const spent = (mode === 'up') ? seconds : (countdownTarget - seconds);
-
     if (!selectedSubject) {
-      alert("Selecione ou cadastre uma matéria antes de salvar.");
+      alert("Por favor, selecione uma matéria para salvar a sessão.");
       return;
     }
 
-    if (spent >= 10) {
-      onSaveSession(selectedSubject, spent, getTodayString());
-      alert(`Sessão salva: ${formatDuration(spent)} em ${selectedSubject}!`);
-    } else {
-      alert("Sessão inferior a 10 segundos não foi registrada.");
+    let recorded = 0;
+    if (mode === 'up') {
+      recorded = seconds;
+    } else if (mode === 'down') {
+      recorded = countdownTarget - seconds;
     }
 
-    setSeconds(0);
+    if (recorded <= 10) {
+      alert("Tempo de estudo muito curto para ser registrado (mínimo de 10 segundos).");
+      return;
+    }
+
+    setIsRunning(false);
+    onSaveSession(selectedSubject, recorded, getTodayString());
+
+    // Reset timer
+    if (mode === 'up') setSeconds(0);
+    if (mode === 'down') setSeconds(countdownTarget);
+
+    alert(`Sessão registrada com sucesso: ${formatDuration(recorded)} em ${selectedSubject}!`);
     onClose();
   };
 
   const handleSaveManual = () => {
-    const totalSeconds = (manualHours * 3600) + (manualMinutes * 60);
-    if (totalSeconds <= 0) {
-      alert("Insira um tempo válido (horas ou minutos).");
-      return;
-    }
     if (!selectedSubject) {
       alert("Selecione uma matéria.");
+      return;
+    }
+    const totalSeconds = (manualHours * 3600) + (manualMinutes * 60);
+    if (totalSeconds <= 0) {
+      alert("Insira uma duração válida maior que 0 minutos.");
       return;
     }
 
@@ -123,8 +135,13 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({
   return (
     <div className="floating-timer-corner">
       <div className="corner-timer-header">
-        <span className="corner-timer-title">⏱️ Cronômetro de Estudo</span>
-        <button className="btn-close-modal" onClick={onClose}>✕</button>
+        <span className="corner-timer-title flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-sky-500" />
+          <span>Cronômetro de Estudo</span>
+        </span>
+        <button className="btn-close-modal" onClick={onClose} aria-label="Fechar">
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Mode segments */}
@@ -187,24 +204,27 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({
           <div className="timer-quick-actions">
             {!isRunning ? (
               <button
-                className="btn-timer-action start"
+                className="btn-timer-action start flex items-center justify-center gap-1"
                 onClick={() => setIsRunning(true)}
               >
-                Iniciar
+                <Play className="w-3.5 h-3.5" />
+                <span>Iniciar</span>
               </button>
             ) : (
               <button
-                className="btn-timer-action pause"
+                className="btn-timer-action pause flex items-center justify-center gap-1"
                 onClick={() => setIsRunning(false)}
               >
-                Pausar
+                <Pause className="w-3.5 h-3.5" />
+                <span>Pausar</span>
               </button>
             )}
             <button
-              className="btn-timer-action stop"
+              className="btn-timer-action stop flex items-center justify-center gap-1"
               onClick={handleFinishTimer}
             >
-              Salvar Sessão
+              <Check className="w-3.5 h-3.5" />
+              <span>Salvar Sessão</span>
             </button>
           </div>
         </div>
@@ -260,10 +280,11 @@ export const FloatingTimer: React.FC<FloatingTimerProps> = ({
           </div>
 
           <button
-            className="btn-auth-submit py-2 text-xs"
+            className="btn-auth-submit py-2 text-xs flex items-center justify-center gap-1.5"
             onClick={handleSaveManual}
           >
-            Registrar Tempo
+            <Check className="w-3.5 h-3.5" />
+            <span>Registrar Tempo</span>
           </button>
         </div>
       )}

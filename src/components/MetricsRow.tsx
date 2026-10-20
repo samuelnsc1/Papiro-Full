@@ -1,5 +1,6 @@
 import React from 'react';
 import { getDaysUntilExam, formatFullDateBR } from '../utils/formatters';
+import { Clock, Calendar, FileText } from 'lucide-react';
 
 interface MetricsRowProps {
   redCount: number;
@@ -9,6 +10,8 @@ interface MetricsRowProps {
   examDate?: string;
   examDays?: number | null;
   onOpenExamConfig?: () => void;
+  onOpenEdital?: () => void;
+  hasEdital?: boolean;
 }
 
 export const MetricsRow: React.FC<MetricsRowProps> = ({
@@ -18,14 +21,20 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
   examPublished = true,
   examDate = "2027-02-17",
   examDays = null,
-  onOpenExamConfig
+  onOpenExamConfig,
+  onOpenEdital,
+  hasEdital = false
 }) => {
   const isPublished = examPublished !== false;
-  let displayValue: string | number = 0;
+  let displayValue: React.ReactNode = 0;
   let displayLabel = "";
 
   if (!isPublished) {
-    displayValue = "⏳";
+    displayValue = (
+      <div className="flex justify-center items-center py-0.5">
+        <Clock className="w-8 h-8 text-[var(--text-muted)] stroke-[1.75]" />
+      </div>
+    );
     displayLabel = "Edital ainda não publicado";
   } else if (examDays !== null && examDays !== undefined) {
     displayValue = examDays;
@@ -38,16 +47,31 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
   return (
     <div className="exam-metrics-row">
       <div
-        className="exam-countdown-box cursor-pointer hover:shadow-md transition-all relative"
+        className="exam-countdown-box cursor-pointer hover:shadow-md transition-all relative group"
         onClick={onOpenExamConfig}
         title="Meta da Prova (para alterar, clique no lápis ao lado do seu nome no topo)"
       >
-        <div className={`counter-number ${!isPublished ? 'text-3xl' : ''}`}>
+        <div className="counter-number">
           {displayValue}
         </div>
-        <div className={`counter-label ${!isPublished ? 'font-extrabold text-[var(--text)]' : ''}`}>
+        <div className={`counter-label ${!isPublished ? 'font-bold text-[var(--text)]' : ''}`}>
           {displayLabel}
         </div>
+
+        {onOpenEdital && (
+          <div
+            className="mt-1 pt-1 border-t border-[var(--border)]/50 flex items-center justify-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-sky-400 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenEdital();
+            }}
+          >
+            <FileText className="w-3 h-3 text-sky-500" />
+            <span className="font-semibold underline">
+              {hasEdital ? 'Visualizar Edital' : 'Inserir Edital'}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="metrics-trio">
