@@ -337,6 +337,28 @@ header {
   text-transform: uppercase;
 }
 
+.btn-switch-contest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.18rem 0.6rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-switch-contest:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+  background: var(--surface);
+}
+
 .header-right {
   display: flex;
   align-items: center;

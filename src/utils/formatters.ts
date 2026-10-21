@@ -41,8 +41,8 @@ export interface StatusResult {
 
 export function evalStatus(diff: number | null, g?: number, y?: number): StatusResult {
   if (diff === null) return { cls: "status-none", badge: "Sem Registro", type: "none" };
-  const greenLim = Number(g) || 20;
-  const yellowLim = Number(y) || 30;
+  const greenLim = Number(g) || 10;
+  const yellowLim = Number(y) || 15;
 
   if (diff <= greenLim) return { cls: "status-green", badge: "Em dia", type: "green" };
   if (diff > greenLim && diff <= yellowLim) return { cls: "status-yellow", badge: "Atenção", type: "yellow" };

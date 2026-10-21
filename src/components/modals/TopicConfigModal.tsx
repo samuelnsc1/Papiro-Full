@@ -16,16 +16,16 @@ export const TopicConfigModal: React.FC<TopicConfigModalProps> = ({
 }) => {
   const [link, setLink] = useState('');
   const [obs, setObs] = useState('');
-  const [yellow, setYellow] = useState(30);
-  const [red, setRed] = useState(40);
+  const [yellow, setYellow] = useState(10);
+  const [red, setRed] = useState(15);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (topic) {
       setLink(topic.link || '');
       setObs(topic.obs || '');
-      setYellow(topic.yellow || 30);
-      setRed(topic.red || 40);
+      setYellow(topic.green ?? (topic.yellow ?? 10));
+      setRed(topic.yellow ?? (topic.red ?? 15));
       setConfirmDelete(false);
     }
   }, [topic]);
@@ -33,11 +33,14 @@ export const TopicConfigModal: React.FC<TopicConfigModalProps> = ({
   if (!topic) return null;
 
   const handleSave = () => {
+    const valGreen = Number(yellow) || 10;
+    const valYellow = Number(red) || 15;
     onSave(topic.id, {
       link: link.trim(),
       obs: obs.trim(),
-      yellow: Number(yellow) || 30,
-      red: Number(red) || 40
+      green: valGreen,
+      yellow: valYellow,
+      red: valYellow
     });
     onClose();
   };
@@ -85,7 +88,7 @@ export const TopicConfigModal: React.FC<TopicConfigModalProps> = ({
               min={1}
               max={365}
               value={yellow}
-              onChange={(e) => setYellow(parseInt(e.target.value, 10) || 30)}
+              onChange={(e) => setYellow(parseInt(e.target.value, 10) || 10)}
             />
           </div>
 
@@ -96,7 +99,7 @@ export const TopicConfigModal: React.FC<TopicConfigModalProps> = ({
               min={1}
               max={365}
               value={red}
-              onChange={(e) => setRed(parseInt(e.target.value, 10) || 40)}
+              onChange={(e) => setRed(parseInt(e.target.value, 10) || 15)}
             />
           </div>
         </div>

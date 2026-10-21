@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { UserProfile } from '../types';
-import { Pencil, RefreshCw, Sun, Moon, LogOut } from 'lucide-react';
+import { Pencil, RefreshCw, Sun, Moon, LogOut, FolderKanban } from 'lucide-react';
 
 interface HeaderProps {
   user: UserProfile;
@@ -11,6 +11,7 @@ interface HeaderProps {
   onLogout: () => void;
   onSyncNow?: () => void;
   isSyncing?: boolean;
+  onSwitchContest?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,7 +22,8 @@ export const Header: React.FC<HeaderProps> = ({
   onAvatarUpload,
   onLogout,
   onSyncNow,
-  isSyncing = false
+  isSyncing = false,
+  onSwitchContest
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,14 +77,25 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <div
-        className="header-center cursor-pointer hover:opacity-80 transition-opacity"
-        onClick={onOpenEditProfile}
-        title="Clique para editar o nome do concurso, projeto e data da prova"
-      >
-        <h1 className="header-center-title">
+      <div className="header-center flex flex-col items-center gap-1">
+        <h1
+          className="header-center-title cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={onOpenEditProfile}
+          title="Clique para editar o nome do concurso, projeto e data da prova"
+        >
           <span>{user.project_name || "MEU PROJETO"}</span>
         </h1>
+        {onSwitchContest && (
+          <button
+            type="button"
+            onClick={onSwitchContest}
+            className="btn-switch-contest"
+            title="Alternar entre concursos ou criar novo workspace"
+          >
+            <FolderKanban className="w-3 h-3 text-sky-500" />
+            <span>Trocar Concurso</span>
+          </button>
+        )}
       </div>
 
       <div className="header-right">

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
-import { Topic, CycleDay, StudySession, UserProfile } from './types';
+import { Topic, CycleDay, StudySession, UserProfile, ContestWorkspace } from './types';
 import { calcDays, evalStatus, getTodayString, getCycleDayIndexForDate } from './utils/formatters';
 
 import { Header } from './components/Header';
 import { AuthView } from './components/AuthView';
+import { ContestSelectView } from './components/ContestSelectView';
 import { CalendarHero } from './components/CalendarHero';
 import { MetricsRow } from './components/MetricsRow';
 import { AccordionList } from './components/AccordionList';
@@ -21,6 +22,16 @@ import { LogoutConfirmModal } from './components/modals/LogoutConfirmModal';
 import { EditalModal } from './components/modals/EditalModal';
 import { Timer, BarChart3, FileText } from 'lucide-react';
 
+export const TRT3_SAMPLE_TOPICS = [
+  { subject: "PORTUGUÊS", title: "Compreensão e interpretação de textos", completed: true, obs: "", link: "", last_review: "", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+  { subject: "PORTUGUÊS", title: "Ortografia e acentuação gráfica", completed: true, obs: "", link: "https://www.tecconcursos.com.br/s/Q6ok1", last_review: "2026-08-13", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+  { subject: "PORTUGUÊS", title: "Transitividade Verbal e Termos Integrantes", completed: false, obs: "exercícios", link: "https://www.tecconcursos.com.br/s/Q6wh7", last_review: "2026-09-21", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+  { subject: "DIREITO DO TRABALHO", title: "Princípios e fontes - FGTS e insalubridade", completed: true, obs: "", link: "", last_review: "2026-10-14", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+  { subject: "DIREITO DO TRABALHO", title: "Das férias (Período concessivo e faltas)", completed: true, obs: "", link: "", last_review: "2026-09-22", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+  { subject: "PROCESSO DO TRABALHO", title: "Atos, termos e prazos processuais (CLT)", completed: true, obs: "", link: "", last_review: "2026-09-01", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+  { subject: "RACIOCÍNIO LÓGICO", title: "Estruturas lógicas e tabelas-verdade", completed: true, obs: "", link: "", last_review: "2026-09-18", green_limit: 10, yellow_limit: 15, red_limit: 15 }
+];
+
 const DEFAULT_CYCLE: CycleDay[] = [
   { day: 1, subjects: [] },
   { day: 2, subjects: [] },
@@ -33,6 +44,9 @@ const DEFAULT_CYCLE: CycleDay[] = [
 
 export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [contests, setContests] = useState<ContestWorkspace[]>([]);
+  const [activeContestId, setActiveContestId] = useState<string | null>(null);
+
   const [userProfile, setUserProfile] = useState<UserProfile>({
     id: 'guest',
     name: 'Concurseiro',
@@ -99,6 +113,8 @@ export const App: React.FC = () => {
   // Completely reset all application state in memory
   const resetAppState = useCallback(() => {
     setCurrentUser(null);
+    setContests([]);
+    setActiveContestId(null);
     setTopics([]);
     setStudyCycle(DEFAULT_CYCLE);
     setStudySessions([]);
@@ -115,6 +131,269 @@ export const App: React.FC = () => {
     });
     setCurrentView('dashboard');
   }, []);
+
+  // Persist all workspaces to localStorage + user_settings + study_topics (__CONTESTS_CONFIG__)
+  const persistContestsData = useCallback(async (
+    updatedContests: ContestWorkspace[],
+    currentActiveId: string | null,
+    userId?: string
+  ) => {
+    const uid = userId || currentUser?.id;
+    if (!uid) return;
+
+    // 1. LocalStorage for instant access & offline cache
+    try {
+      localStorage.setItem(`papiro_contests_${uid}`, JSON.stringify(updatedContests));
+    } catch (e) {
+      console.warn("LocalStorage persist error:", e);
+    }
+
+    if (uid.startsWith('guest_')) return;
+
+    const activeContest = updatedContests.find((c) => c.id === currentActiveId) || updatedContests[0];
+
+    // 2. Cloud persistence in user_settings.cycle_config
+    try {
+      const settingsPayload = {
+        contests: updatedContests,
+        active_contest_id: currentActiveId,
+        cycle: activeContest?.study_cycle || DEFAULT_CYCLE,
+        project_name: activeContest?.name || 'MEU PROJETO',
+        exam_published: activeContest?.exam_published !== false,
+        exam_date: activeContest?.exam_date || '2027-02-17',
+        exam_days: activeContest?.exam_days ?? null,
+        registered_subjects: activeContest?.registered_subjects || []
+      };
+
+      await supabase.from('user_settings').upsert({
+        user_id: uid,
+        cycle_config: settingsPayload,
+        exam_date: activeContest?.exam_date || '2027-02-17'
+      }, { onConflict: 'user_id' });
+    } catch (err) {
+      console.warn("Could not persist contests to user_settings:", err);
+    }
+
+    // 3. Cloud persistence in study_topics (__SYSTEM_CONFIG__ -> __CONTESTS_CONFIG__)
+    try {
+      const { data: exContests } = await supabase
+        .from('study_topics')
+        .select('id')
+        .eq('user_id', uid)
+        .eq('subject', '__SYSTEM_CONFIG__')
+        .eq('title', '__CONTESTS_CONFIG__')
+        .maybeSingle();
+
+      const contestsJson = JSON.stringify(updatedContests);
+
+      if (exContests?.id) {
+        await supabase.from('study_topics').update({ obs: contestsJson }).eq('id', exContests.id);
+      } else {
+        await supabase.from('study_topics').insert({
+          user_id: uid,
+          subject: '__SYSTEM_CONFIG__',
+          title: '__CONTESTS_CONFIG__',
+          obs: contestsJson,
+          completed: false
+        });
+      }
+    } catch (e) {
+      console.warn("Could not persist contests to study_topics:", e);
+    }
+  }, [currentUser?.id]);
+
+  // Helper to update active contest inside contests array
+  const updateActiveContest = useCallback((updater: (c: ContestWorkspace) => Partial<ContestWorkspace>) => {
+    if (!activeContestId) return;
+    setContests((prev) => {
+      const next = prev.map((c) => {
+        if (c.id === activeContestId) {
+          return {
+            ...c,
+            ...updater(c)
+          };
+        }
+        return c;
+      });
+      persistContestsData(next, activeContestId);
+      return next;
+    });
+  }, [activeContestId, persistContestsData]);
+
+  // Select a contest to enter its dashboard
+  const handleSelectContest = useCallback((contestId: string) => {
+    const target = contests.find((c) => c.id === contestId);
+    if (!target) return;
+
+    setActiveContestId(target.id);
+    setTopics(target.topics || []);
+    setStudyCycle(target.study_cycle || DEFAULT_CYCLE);
+    setRegisteredSubjects(target.registered_subjects || []);
+    setStudySessions(target.study_sessions || []);
+
+    setUserProfile((prev) => ({
+      ...prev,
+      project_name: target.name,
+      exam_published: target.exam_published !== false,
+      exam_date: target.exam_date || '2027-02-17',
+      exam_days: target.exam_days !== undefined ? target.exam_days : null,
+      edital_title: target.edital?.edital_title || target.name,
+      edital_url: target.edital?.edital_url || '',
+      edital_notes: target.edital?.edital_notes || '',
+      edital_file_name: target.edital?.edital_file_name || '',
+      edital_file_base64: target.edital?.edital_file_base64 || ''
+    }));
+
+    setCurrentView('dashboard');
+  }, [contests]);
+
+  // Switch back to contest selection screen
+  const handleSwitchContest = useCallback(() => {
+    if (activeContestId) {
+      setContests((prev) => {
+        const next = prev.map((c) => {
+          if (c.id === activeContestId) {
+            return {
+              ...c,
+              name: userProfile.project_name || c.name,
+              exam_published: userProfile.exam_published !== false,
+              exam_date: userProfile.exam_date || '2027-02-17',
+              exam_days: userProfile.exam_days ?? null,
+              study_cycle: studyCycle,
+              registered_subjects: registeredSubjects,
+              topics: topics,
+              study_sessions: studySessions,
+              edital: {
+                edital_title: userProfile.edital_title || userProfile.project_name || '',
+                edital_url: userProfile.edital_url || '',
+                edital_notes: userProfile.edital_notes || '',
+                edital_file_name: userProfile.edital_file_name || '',
+                edital_file_base64: userProfile.edital_file_base64 || ''
+              }
+            };
+          }
+          return c;
+        });
+        persistContestsData(next, null);
+        return next;
+      });
+    }
+    setActiveContestId(null);
+    setCurrentView('dashboard');
+  }, [activeContestId, userProfile, studyCycle, registeredSubjects, topics, studySessions, persistContestsData]);
+
+  // Create a brand new independent contest workspace
+  const handleCreateContest = useCallback((
+    name: string,
+    examPublished: boolean,
+    examDate: string,
+    templateType: 'blank' | 'trt3'
+  ) => {
+    const newId = 'contest_' + Date.now();
+    let initialTopics: Topic[] = [];
+    let initialSubjects: string[] = [];
+
+    if (templateType === 'trt3') {
+      initialTopics = TRT3_SAMPLE_TOPICS.map((p, idx) => ({
+        id: 'trt3_' + newId + '_' + idx,
+        subject: p.subject,
+        title: p.title,
+        completed: p.completed,
+        obs: p.obs,
+        link: p.link,
+        lastReview: p.last_review,
+        green: p.green_limit,
+        yellow: p.yellow_limit,
+        red: p.red_limit
+      }));
+      initialSubjects = Array.from(new Set(TRT3_SAMPLE_TOPICS.map((p) => p.subject)));
+    }
+
+    const newWorkspace: ContestWorkspace = {
+      id: newId,
+      name: name.trim().toUpperCase(),
+      created_at: new Date().toISOString(),
+      is_standby: false,
+      exam_published: examPublished,
+      exam_date: examDate,
+      exam_days: null,
+      study_cycle: DEFAULT_CYCLE,
+      registered_subjects: initialSubjects,
+      topics: initialTopics,
+      study_sessions: [],
+      edital: { edital_title: name.trim() }
+    };
+
+    const nextContests = [...contests, newWorkspace];
+    setContests(nextContests);
+    persistContestsData(nextContests, newId);
+
+    // Directly enter the new contest
+    setActiveContestId(newId);
+    setTopics(initialTopics);
+    setStudyCycle(DEFAULT_CYCLE);
+    setRegisteredSubjects(initialSubjects);
+    setStudySessions([]);
+    setUserProfile((prev) => ({
+      ...prev,
+      project_name: newWorkspace.name,
+      exam_published: examPublished,
+      exam_date: examDate,
+      exam_days: null,
+      edital_title: newWorkspace.name,
+      edital_url: '',
+      edital_notes: '',
+      edital_file_name: '',
+      edital_file_base64: ''
+    }));
+    setCurrentView('dashboard');
+  }, [contests, persistContestsData]);
+
+  // Toggle Standby
+  const handleToggleStandby = useCallback((contestId: string) => {
+    setContests((prev) => {
+      const next = prev.map((c) => {
+        if (c.id === contestId) {
+          return { ...c, is_standby: !c.is_standby };
+        }
+        return c;
+      });
+      persistContestsData(next, activeContestId);
+      return next;
+    });
+  }, [activeContestId, persistContestsData]);
+
+  // Rename Contest
+  const handleRenameContest = useCallback((contestId: string, newName: string) => {
+    const clean = newName.trim().toUpperCase();
+    setContests((prev) => {
+      const next = prev.map((c) => {
+        if (c.id === contestId) {
+          return { ...c, name: clean };
+        }
+        return c;
+      });
+      persistContestsData(next, activeContestId);
+      return next;
+    });
+    if (activeContestId === contestId) {
+      setUserProfile((prev) => ({ ...prev, project_name: clean }));
+    }
+  }, [activeContestId, persistContestsData]);
+
+  // Delete Contest
+  const handleDeleteContest = useCallback((contestId: string) => {
+    if (contests.length <= 1) {
+      alert("Você precisa manter pelo menos um concurso.");
+      return;
+    }
+    const next = contests.filter((c) => c.id !== contestId);
+    setContests(next);
+    if (activeContestId === contestId) {
+      setActiveContestId(null);
+    }
+    persistContestsData(next, activeContestId === contestId ? null : activeContestId);
+  }, [contests, activeContestId, persistContestsData]);
 
   // Load user data bootstrap strictly scoped to user.id and synchronized across devices
   const loadUserData = useCallback(async (user: any) => {
@@ -232,9 +511,9 @@ export const App: React.FC = () => {
           obs: t.obs || '',
           link: t.link || '',
           lastReview: t.last_review || '',
-          green: t.green_limit || 20,
-          yellow: t.yellow_limit || 30,
-          red: t.red_limit || 40
+          green: t.green_limit || 10,
+          yellow: t.yellow_limit || 15,
+          red: t.red_limit || 15
         });
       });
 
@@ -293,10 +572,103 @@ export const App: React.FC = () => {
         .order('study_date', { ascending: true });
 
       setStudySessions(dbSessions || []);
+
+      // 5. Workspaces Multi-Concursos Resolution
+      let loadedContests: ContestWorkspace[] | null = null;
+
+      // Priority 1: __CONTESTS_CONFIG__ in study_topics
+      const contestsTopic = (dbTopics || []).find(
+        (t: any) => t.subject === '__SYSTEM_CONFIG__' && t.title === '__CONTESTS_CONFIG__'
+      );
+      if (contestsTopic?.obs) {
+        try {
+          const parsed = JSON.parse(contestsTopic.obs);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loadedContests = parsed;
+          }
+        } catch (e) {
+          console.warn("Could not parse __CONTESTS_CONFIG__:", e);
+        }
+      }
+
+      // Priority 2: user_settings.cycle_config.contests
+      if (!loadedContests && settings?.cycle_config?.contests) {
+        if (Array.isArray(settings.cycle_config.contests) && settings.cycle_config.contests.length > 0) {
+          loadedContests = settings.cycle_config.contests;
+        }
+      }
+
+      // Priority 3: LocalStorage
+      if (!loadedContests) {
+        try {
+          const cached = localStorage.getItem(`papiro_contests_${user.id}`);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              loadedContests = parsed;
+            }
+          }
+        } catch (e) {
+          console.warn("LocalStorage contests read error:", e);
+        }
+      }
+
+      if (loadedContests && loadedContests.length > 0) {
+        // Guarantee backwards compatibility: if default workspace has empty topics but db has loadedTopics, hydrate it
+        const defaultIdx = loadedContests.findIndex((c) => c.id === 'default');
+        if (defaultIdx !== -1) {
+          if ((!loadedContests[defaultIdx].topics || loadedContests[defaultIdx].topics.length === 0) && loadedTopics.length > 0) {
+            loadedContests[defaultIdx].topics = loadedTopics;
+          }
+          if ((!loadedContests[defaultIdx].study_sessions || loadedContests[defaultIdx].study_sessions.length === 0) && (dbSessions || []).length > 0) {
+            loadedContests[defaultIdx].study_sessions = dbSessions || [];
+          }
+          if (!loadedContests[defaultIdx].name || loadedContests[defaultIdx].name === 'MEU PROJETO') {
+            loadedContests[defaultIdx].name = finalProject;
+          }
+        }
+
+        const sanitized = loadedContests.map((c) => ({
+          ...c,
+          study_cycle: c.study_cycle || DEFAULT_CYCLE,
+          registered_subjects: c.registered_subjects || [],
+          topics: c.topics || [],
+          study_sessions: c.study_sessions || []
+        }));
+
+        setContests(sanitized);
+        setActiveContestId((prev) => {
+          if (prev && sanitized.some((c) => c.id === prev)) return prev;
+          return null;
+        });
+      } else {
+        // Synthesize first contest workspace with 100% of user's existing progress
+        const initialContest: ContestWorkspace = {
+          id: 'default',
+          name: finalProject || 'MEU CONCURSO',
+          created_at: new Date().toISOString(),
+          is_standby: false,
+          exam_published: finalExamPublished,
+          exam_date: finalExamDate,
+          exam_days: finalExamDays,
+          study_cycle: currentCycle,
+          registered_subjects: Array.from(subs),
+          topics: loadedTopics,
+          study_sessions: dbSessions || [],
+          edital: finalEdital
+        };
+
+        setContests([initialContest]);
+        setActiveContestId((prev) => {
+          if (prev === 'default') return 'default';
+          return null;
+        });
+        persistContestsData([initialContest], null, user.id);
+      }
     } catch (err) {
       console.warn("Could not load from Supabase directly", err);
     }
-  }, []);
+  }, [persistContestsData]);
 
   // Real-time synchronization across desktop, tablet, and mobile
   useEffect(() => {
@@ -578,17 +950,31 @@ export const App: React.FC = () => {
           id: userId,
           name: cleanName,
           email: cleanEmail,
-          project_name: 'MEU PROJETO',
+          project_name: 'MEU CONCURSO',
           avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
           exam_published: true,
           exam_date: '2027-02-17',
           exam_days: null
         });
-        setTopics([]);
-        setStudyCycle(cleanCycle);
-        setStudySessions([]);
-        setRegisteredSubjects([]);
-        setCurrentView('dashboard');
+
+        const initialWorkspace: ContestWorkspace = {
+          id: 'default',
+          name: 'MEU CONCURSO',
+          created_at: new Date().toISOString(),
+          is_standby: false,
+          exam_published: true,
+          exam_date: '2027-02-17',
+          exam_days: null,
+          study_cycle: cleanCycle,
+          registered_subjects: [],
+          topics: [],
+          study_sessions: [],
+          edital: { edital_title: 'MEU CONCURSO' }
+        };
+
+        setContests([initialWorkspace]);
+        setActiveContestId(null);
+        persistContestsData([initialWorkspace], null, userId);
       }
 
       return {};
@@ -603,22 +989,69 @@ export const App: React.FC = () => {
     const guestUser = {
       id: 'guest_' + Math.random().toString(36).substring(2, 9),
       email: 'convidado@papirofull.local',
-      user_metadata: { name: 'Concurseiro Convidado', project_name: 'MEU PROJETO' }
+      user_metadata: { name: 'Concurseiro Convidado', project_name: 'LAGOA SANTA' }
     };
     setCurrentUser(guestUser);
-    setUserProfile({
-      id: guestUser.id,
-      name: 'Concurseiro Convidado',
-      email: guestUser.email,
-      project_name: 'MEU PROJETO',
-      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+
+    const demoTopics1: Topic[] = TRT3_SAMPLE_TOPICS.slice(0, 4).map((p, idx) => ({
+      id: 'demo1_' + idx,
+      subject: p.subject,
+      title: p.title,
+      completed: p.completed,
+      obs: p.obs,
+      link: p.link,
+      lastReview: p.last_review,
+      green: p.green_limit,
+      yellow: p.yellow_limit,
+      red: p.red_limit
+    }));
+
+    const demoTopics2: Topic[] = TRT3_SAMPLE_TOPICS.map((p, idx) => ({
+      id: 'demo2_' + idx,
+      subject: p.subject,
+      title: p.title,
+      completed: idx % 2 === 0,
+      obs: p.obs,
+      link: p.link,
+      lastReview: p.last_review,
+      green: p.green_limit,
+      yellow: p.yellow_limit,
+      red: p.red_limit
+    }));
+
+    const demoContest1: ContestWorkspace = {
+      id: 'demo_1',
+      name: 'LAGOA SANTA',
+      created_at: new Date().toISOString(),
+      is_standby: false,
       exam_published: true,
       exam_date: '2027-02-17',
-      exam_days: null
-    });
-    setTopics([]);
-    setRegisteredSubjects([]);
-    setStudyCycle(DEFAULT_CYCLE);
+      exam_days: null,
+      study_cycle: DEFAULT_CYCLE,
+      registered_subjects: ['PORTUGUÊS', 'DIREITO DO TRABALHO'],
+      topics: demoTopics1,
+      study_sessions: [],
+      edital: { edital_title: 'Edital Lagoa Santa' }
+    };
+
+    const demoContest2: ContestWorkspace = {
+      id: 'demo_2',
+      name: 'TRT-3 - TÉCNICO',
+      created_at: new Date().toISOString(),
+      is_standby: true,
+      exam_published: false,
+      exam_date: '2027-06-15',
+      exam_days: null,
+      study_cycle: DEFAULT_CYCLE,
+      registered_subjects: Array.from(new Set(TRT3_SAMPLE_TOPICS.map((p) => p.subject))),
+      topics: demoTopics2,
+      study_sessions: [],
+      edital: { edital_title: 'Edital TRT-3' }
+    };
+
+    const guestContests = [demoContest1, demoContest2];
+    setContests(guestContests);
+    setActiveContestId(null);
   };
 
   // Confirmed Logout (iframe-safe, zero window.confirm)
@@ -668,6 +1101,25 @@ export const App: React.FC = () => {
       exam_date: examDate,
       exam_days: examDays
     }));
+
+    // 2. Immediately update contest in contests list so ContestSelectView displays the new name
+    setContests((prev) => {
+      const targetId = activeContestId || 'default';
+      const next = prev.map((c) => {
+        if (c.id === targetId) {
+          return {
+            ...c,
+            name: cleanProject,
+            exam_published: examPublished,
+            exam_date: examDate,
+            exam_days: examDays
+          };
+        }
+        return c;
+      });
+      persistContestsData(next, activeContestId);
+      return next;
+    });
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
       const userId = currentUser.id;
@@ -970,6 +1422,11 @@ export const App: React.FC = () => {
           cycle_config: payload
         }, { onConflict: 'user_id' });
     }
+
+    updateActiveContest(() => ({
+      study_cycle: newCycle,
+      registered_subjects: updatedSubs
+    }));
   };
 
   // Register New Subject
@@ -1016,12 +1473,16 @@ export const App: React.FC = () => {
         link: '',
         obs: '',
         lastReview: getTodayString(),
-        green: 20,
-        yellow: 30,
-        red: 40
+        green: 10,
+        yellow: 15,
+        red: 15
       };
 
-      setTopics((prev) => [...prev, newTopic]);
+      setTopics((prev) => {
+        const next = [...prev, newTopic];
+        updateActiveContest(() => ({ topics: next }));
+        return next;
+      });
 
       if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
         const { data } = await supabase.from('study_topics').insert({
@@ -1032,13 +1493,17 @@ export const App: React.FC = () => {
           link: '',
           obs: '',
           last_review: getTodayString(),
-          green_limit: 20,
-          yellow_limit: 30,
-          red_limit: 40
+          green_limit: 10,
+          yellow_limit: 15,
+          red_limit: 15
         }).select().single();
 
         if (data) {
-          setTopics((prev) => prev.map((t) => t.id === tempId ? { ...t, id: String(data.id) } : t));
+          setTopics((prev) => {
+            const next = prev.map((t) => t.id === tempId ? { ...t, id: String(data.id) } : t);
+            updateActiveContest(() => ({ topics: next }));
+            return next;
+          });
         }
       }
     }
@@ -1048,7 +1513,6 @@ export const App: React.FC = () => {
   const handleDeleteSubject = async (subject: string) => {
     if (subject === '__SYSTEM_CONFIG__' || subject.startsWith('__')) return;
 
-    setTopics((prev) => prev.filter((t) => t.subject !== subject));
     const nextSubs = registeredSubjects.filter((s) => s !== subject);
     setRegisteredSubjects(nextSubs);
 
@@ -1057,6 +1521,16 @@ export const App: React.FC = () => {
       subjects: (c.subjects || []).filter((s) => s !== subject)
     }));
     setStudyCycle(updatedCycle);
+
+    setTopics((prev) => {
+      const next = prev.filter((t) => t.subject !== subject);
+      updateActiveContest(() => ({
+        topics: next,
+        registered_subjects: nextSubs,
+        study_cycle: updatedCycle
+      }));
+      return next;
+    });
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
       await supabase.from('study_topics').delete().eq('user_id', currentUser.id).eq('subject', subject);
@@ -1087,12 +1561,16 @@ export const App: React.FC = () => {
       link: link.trim(),
       obs: obs.trim(),
       lastReview: getTodayString(),
-      green: 20,
-      yellow: 30,
-      red: 40
+      green: 10,
+      yellow: 15,
+      red: 15
     };
 
-    setTopics((prev) => [...prev, newTopic]);
+    setTopics((prev) => {
+      const next = [...prev, newTopic];
+      updateActiveContest(() => ({ topics: next }));
+      return next;
+    });
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
       const { data } = await supabase.from('study_topics').insert({
@@ -1103,20 +1581,28 @@ export const App: React.FC = () => {
         link: link.trim(),
         obs: obs.trim(),
         last_review: getTodayString(),
-        green_limit: 20,
-        yellow_limit: 30,
-        red_limit: 40
+        green_limit: 10,
+        yellow_limit: 15,
+        red_limit: 15
       }).select().single();
 
       if (data) {
-        setTopics((prev) => prev.map((t) => t.id === tempId ? { ...t, id: String(data.id) } : t));
+        setTopics((prev) => {
+          const next = prev.map((t) => t.id === tempId ? { ...t, id: String(data.id) } : t);
+          updateActiveContest(() => ({ topics: next }));
+          return next;
+        });
       }
     }
   };
 
   // Toggle Done
   const handleToggleDone = async (topicId: string, completed: boolean) => {
-    setTopics((prev) => prev.map((t) => t.id === topicId ? { ...t, completed } : t));
+    setTopics((prev) => {
+      const next = prev.map((t) => t.id === topicId ? { ...t, completed } : t);
+      updateActiveContest(() => ({ topics: next }));
+      return next;
+    });
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
       await supabase
@@ -1130,7 +1616,11 @@ export const App: React.FC = () => {
   // Mark Today
   const handleMarkToday = async (topicId: string) => {
     const todayStr = getTodayString();
-    setTopics((prev) => prev.map((t) => t.id === topicId ? { ...t, lastReview: todayStr } : t));
+    setTopics((prev) => {
+      const next = prev.map((t) => t.id === topicId ? { ...t, lastReview: todayStr } : t);
+      updateActiveContest(() => ({ topics: next }));
+      return next;
+    });
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
       await supabase
@@ -1151,7 +1641,11 @@ export const App: React.FC = () => {
 
   // Save Topic Updates from Modal
   const handleSaveTopicUpdates = async (topicId: string, updates: Partial<Topic>) => {
-    setTopics((prev) => prev.map((t) => t.id === topicId ? { ...t, ...updates } : t));
+    setTopics((prev) => {
+      const next = prev.map((t) => t.id === topicId ? { ...t, ...updates } : t);
+      updateActiveContest(() => ({ topics: next }));
+      return next;
+    });
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
       await supabase
@@ -1159,6 +1653,7 @@ export const App: React.FC = () => {
         .update({
           link: updates.link,
           obs: updates.obs,
+          green_limit: updates.green,
           yellow_limit: updates.yellow,
           red_limit: updates.red
         })
@@ -1169,7 +1664,11 @@ export const App: React.FC = () => {
 
   // Delete Topic (works from both AccordionList and TopicConfigModal)
   const handleDeleteTopic = async (topicId: string) => {
-    setTopics((prev) => prev.filter((t) => t.id !== topicId));
+    setTopics((prev) => {
+      const next = prev.filter((t) => t.id !== topicId);
+      updateActiveContest(() => ({ topics: next }));
+      return next;
+    });
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
       await supabase
@@ -1190,7 +1689,11 @@ export const App: React.FC = () => {
       study_date: studyDate
     };
 
-    setStudySessions((prev) => [...prev, newSession]);
+    setStudySessions((prev) => {
+      const next = [...prev, newSession];
+      updateActiveContest(() => ({ study_sessions: next }));
+      return next;
+    });
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
       await supabase.from('study_sessions').insert({
@@ -1205,13 +1708,13 @@ export const App: React.FC = () => {
   // Load TRT-3 Sample Template
   const handleLoadTRT3Template = async () => {
     const payload = [
-      { subject: "PORTUGUÊS", title: "Compreensão e interpretação de textos", completed: true, obs: "", link: "", last_review: "", green_limit: 20, yellow_limit: 30, red_limit: 40 },
-      { subject: "PORTUGUÊS", title: "Ortografia e acentuação gráfica", completed: true, obs: "", link: "https://www.tecconcursos.com.br/s/Q6ok1", last_review: "2026-08-13", green_limit: 20, yellow_limit: 30, red_limit: 40 },
-      { subject: "PORTUGUÊS", title: "Transitividade Verbal e Termos Integrantes", completed: false, obs: "exercícios", link: "https://www.tecconcursos.com.br/s/Q6wh7", last_review: "2026-09-21", green_limit: 20, yellow_limit: 30, red_limit: 40 },
-      { subject: "DIREITO DO TRABALHO", title: "Princípios e fontes - FGTS e insalubridade", completed: true, obs: "", link: "", last_review: "2026-10-14", green_limit: 20, yellow_limit: 30, red_limit: 40 },
-      { subject: "DIREITO DO TRABALHO", title: "Das férias (Período concessivo e faltas)", completed: true, obs: "", link: "", last_review: "2026-09-22", green_limit: 20, yellow_limit: 30, red_limit: 40 },
-      { subject: "PROCESSO DO TRABALHO", title: "Atos, termos e prazos processuais (CLT)", completed: true, obs: "", link: "", last_review: "2026-09-01", green_limit: 20, yellow_limit: 30, red_limit: 40 },
-      { subject: "RACIOCÍNIO LÓGICO", title: "Estruturas lógicas e tabelas-verdade", completed: true, obs: "", link: "", last_review: "2026-09-18", green_limit: 20, yellow_limit: 30, red_limit: 40 }
+      { subject: "PORTUGUÊS", title: "Compreensão e interpretação de textos", completed: true, obs: "", link: "", last_review: "", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+      { subject: "PORTUGUÊS", title: "Ortografia e acentuação gráfica", completed: true, obs: "", link: "https://www.tecconcursos.com.br/s/Q6ok1", last_review: "2026-08-13", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+      { subject: "PORTUGUÊS", title: "Transitividade Verbal e Termos Integrantes", completed: false, obs: "exercícios", link: "https://www.tecconcursos.com.br/s/Q6wh7", last_review: "2026-09-21", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+      { subject: "DIREITO DO TRABALHO", title: "Princípios e fontes - FGTS e insalubridade", completed: true, obs: "", link: "", last_review: "2026-10-14", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+      { subject: "DIREITO DO TRABALHO", title: "Das férias (Período concessivo e faltas)", completed: true, obs: "", link: "", last_review: "2026-09-22", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+      { subject: "PROCESSO DO TRABALHO", title: "Atos, termos e prazos processuais (CLT)", completed: true, obs: "", link: "", last_review: "2026-09-01", green_limit: 10, yellow_limit: 15, red_limit: 15 },
+      { subject: "RACIOCÍNIO LÓGICO", title: "Estruturas lógicas e tabelas-verdade", completed: true, obs: "", link: "", last_review: "2026-09-18", green_limit: 10, yellow_limit: 15, red_limit: 15 }
     ];
 
     const newTopics: Topic[] = payload.map((p, idx) => ({
@@ -1227,11 +1730,16 @@ export const App: React.FC = () => {
       red: p.red_limit
     }));
 
-    setTopics((prev) => [...prev, ...newTopics]);
-
     // Update registered subjects
     const subjectsInPayload = Array.from(new Set(payload.map((p) => p.subject)));
-    setRegisteredSubjects((prev) => Array.from(new Set([...prev, ...subjectsInPayload])));
+    const updatedSubs = Array.from(new Set([...registeredSubjects, ...subjectsInPayload]));
+    setRegisteredSubjects(updatedSubs);
+
+    setTopics((prev) => {
+      const next = [...prev, ...newTopics];
+      updateActiveContest(() => ({ topics: next, registered_subjects: updatedSubs }));
+      return next;
+    });
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
       try {
@@ -1257,10 +1765,10 @@ export const App: React.FC = () => {
     return { redCount: r, yellowCount: y, greenCount: g };
   }, [topics]);
 
-  // Today's subjects in active cycle
+  // Today's subjects in active cycle (Dia 1 / Início do ciclo)
   const todaySubjects = useMemo(() => {
-    const cycleIdx = getCycleDayIndexForDate(new Date());
-    const dayItem = studyCycle.find(c => c.day === cycleIdx + 1) || studyCycle[cycleIdx];
+    if (!studyCycle || studyCycle.length === 0) return [];
+    const dayItem = studyCycle[0];
     return dayItem?.subjects || [];
   }, [studyCycle]);
 
@@ -1272,6 +1780,32 @@ export const App: React.FC = () => {
         onRegister={handleRegister}
         onGuestAccess={handleGuestAccess}
       />
+    );
+  }
+
+  // Between login and main dashboard: show ContestSelectView when no active contest is selected
+  if (!activeContestId) {
+    return (
+      <>
+        <ContestSelectView
+          user={userProfile}
+          contests={contests}
+          activeContestId={activeContestId}
+          onSelectContest={handleSelectContest}
+          onCreateContest={handleCreateContest}
+          onToggleStandby={handleToggleStandby}
+          onRenameContest={handleRenameContest}
+          onDeleteContest={handleDeleteContest}
+          isDark={isDark}
+          onToggleTheme={setIsDark}
+          onLogout={() => setIsLogoutModalOpen(true)}
+        />
+        <LogoutConfirmModal
+          isOpen={isLogoutModalOpen}
+          onClose={() => setIsLogoutModalOpen(false)}
+          onConfirm={handleExecuteLogout}
+        />
+      </>
     );
   }
 
@@ -1288,9 +1822,10 @@ export const App: React.FC = () => {
             onLogout={() => setIsLogoutModalOpen(true)}
             onSyncNow={handleManualSync}
             isSyncing={isSyncing}
+            onSwitchContest={handleSwitchContest}
           />
 
-          {/* 1. Programação de Hoje (7 Dias) */}
+          {/* 1. Programação de Hoje (Ciclo de Estudos) */}
           <CalendarHero
             studyCycle={studyCycle}
             onOpenCycleConfig={() => setIsCycleConfigOpen(true)}
@@ -1336,8 +1871,6 @@ export const App: React.FC = () => {
             examDate={userProfile.exam_date || "2027-02-17"}
             examDays={userProfile.exam_days}
             onOpenExamConfig={() => setIsEditProfileOpen(true)}
-            onOpenEdital={() => setIsEditalOpen(true)}
-            hasEdital={Boolean(userProfile.edital_url || userProfile.edital_file_name)}
           />
 
           {/* 4. Edital Verticalizado */}

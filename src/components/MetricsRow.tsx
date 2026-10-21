@@ -10,8 +10,6 @@ interface MetricsRowProps {
   examDate?: string;
   examDays?: number | null;
   onOpenExamConfig?: () => void;
-  onOpenEdital?: () => void;
-  hasEdital?: boolean;
 }
 
 export const MetricsRow: React.FC<MetricsRowProps> = ({
@@ -21,9 +19,7 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
   examPublished = true,
   examDate = "2027-02-17",
   examDays = null,
-  onOpenExamConfig,
-  onOpenEdital,
-  hasEdital = false
+  onOpenExamConfig
 }) => {
   const isPublished = examPublished !== false;
   let displayValue: React.ReactNode = 0;
@@ -57,21 +53,6 @@ export const MetricsRow: React.FC<MetricsRowProps> = ({
         <div className={`counter-label ${!isPublished ? 'font-bold text-[var(--text)]' : ''}`}>
           {displayLabel}
         </div>
-
-        {onOpenEdital && (
-          <div
-            className="mt-1 pt-1 border-t border-[var(--border)]/50 flex items-center justify-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-sky-400 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenEdital();
-            }}
-          >
-            <FileText className="w-3 h-3 text-sky-500" />
-            <span className="font-semibold underline">
-              {hasEdital ? 'Visualizar Edital' : 'Inserir Edital'}
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="metrics-trio">

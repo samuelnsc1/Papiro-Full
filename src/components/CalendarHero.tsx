@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { CycleDay } from '../types';
-import { getCycleDayIndexForDate, DAYS_ABBR } from '../utils/formatters';
+import { DAYS_ABBR } from '../utils/formatters';
 import { Calendar, ChevronLeft, ChevronRight, SlidersHorizontal, BookOpen } from 'lucide-react';
 
 interface CalendarHeroProps {
@@ -14,21 +14,23 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
 }) => {
   const today = new Date();
 
-  // Allow selecting any day to inspect its plan without cluttering the screen
+  // Allow selecting any day in the cycle to inspect its plan without cluttering the screen
   const [selectedOffset, setSelectedOffset] = useState<number>(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Build the 7 days strip starting from today
+  // Dynamic cycle length (e.g. 4, 5, 6, 7 days)
+  const cycleLength = studyCycle && Array.isArray(studyCycle) && studyCycle.length > 0
+    ? studyCycle.length
+    : 7;
+
+  // Build the cycle strip starting from today (Day 1 = Hoje, Day 2 = Amanhã, etc.)
   const daysStrip = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < cycleLength; i++) {
     const d = new Date();
     d.setDate(today.getDate() + i);
-    const cycleIdx = getCycleDayIndexForDate(d);
-    // Safe lookup by day number (1-based) or by array index
-    const cycleItem =
-      studyCycle.find((c) => c.day === cycleIdx + 1) ||
-      studyCycle[cycleIdx] ||
-      { day: cycleIdx + 1, subjects: [] };
+
+    // Each day card corresponds to the sequential day in the user's study cycle
+    const cycleItem = studyCycle[i] || { day: i + 1, subjects: [] };
     const isToday = i === 0;
 
     daysStrip.push({
@@ -37,14 +39,16 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
       weekday: DAYS_ABBR[d.getDay()],
       fullWeekday: d.toLocaleDateString('pt-BR', { weekday: 'long' }),
       dayDateStr: `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
-      cycleDayNumber: cycleItem.day,
+      cycleDayNumber: cycleItem.day || i + 1,
       subjects: cycleItem.subjects || [],
       isToday
     });
   }
 
-  const selectedItem = daysStrip[selectedOffset] || daysStrip[0];
-  const isSelectedToday = selectedOffset === 0;
+  // Ensure safe index bounds if cycle length changes dynamically
+  const safeOffset = selectedOffset < daysStrip.length ? selectedOffset : 0;
+  const selectedItem = daysStrip[safeOffset] || daysStrip[0];
+  const isSelectedToday = safeOffset === 0;
   const hasSubjects = selectedItem.subjects && selectedItem.subjects.length > 0;
 
   // Center a card in the scrollable strip
@@ -95,7 +99,7 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
               </span>
             </span>
             <span className="hero-cycle-badge">
-              Dia {selectedItem.cycleDayNumber} de 7
+              Dia {selectedItem.cycleDayNumber} de {cycleLength}
             </span>
           </div>
 
@@ -118,7 +122,7 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
             type="button"
             className="btn-dots-menu"
             onClick={onOpenCycleConfig}
-            title="Configurar Ciclo de 7 Dias & Matérias"
+            title={`Configurar Ciclo de ${cycleLength} Dias & Matérias`}
             aria-label="Configurar Ciclo de Estudo"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -138,7 +142,7 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
             <span className="hint-text text-xs">
               {isSelectedToday
                 ? 'Nenhuma matéria programada para hoje. Toque no ícone de configurações para planejar seu ciclo.'
-                : `Nenhuma matéria programada para ${selectedItem.weekday}. Toque para configurar.`}
+                : `Nenhuma matéria programada para o Dia ${selectedItem.cycleDayNumber} (${selectedItem.weekday}). Toque para configurar.`}
             </span>
           </div>
         ) : (
@@ -152,18 +156,19 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
         )}
       </div>
 
-      {/* Bottom Section: Carrossel / Slider Horizontal dos 7 Dias com as Matérias */}
+      {/* Bottom Section: Carrossel / Slider Horizontal dos Dias do Ciclo */}
       <div className="calendar-slider-wrapper">
         <div className="calendar-slider-header">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--cal-text-muted)]">
-            Ciclo dos 7 Dias
+            Ciclo de {cycleLength} Dias
           </span>
+
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={handlePrev}
-              disabled={selectedOffset === 0}
-              className={`slider-nav-btn ${selectedOffset === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+              disabled={safeOffset === 0}
+              className={`slider-nav-btn ${safeOffset === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
               title="Dia anterior"
               aria-label="Dia anterior"
             >
@@ -172,8 +177,8 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
             <button
               type="button"
               onClick={handleNext}
-              disabled={selectedOffset === daysStrip.length - 1}
-              className={`slider-nav-btn ${selectedOffset === daysStrip.length - 1 ? 'opacity-40 cursor-not-allowed' : ''}`}
+              disabled={safeOffset === daysStrip.length - 1}
+              className={`slider-nav-btn ${safeOffset === daysStrip.length - 1 ? 'opacity-40 cursor-not-allowed' : ''}`}
               title="Próximo dia"
               aria-label="Próximo dia"
             >
@@ -184,7 +189,7 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
 
         <div className="calendar-slider-strip" ref={scrollRef}>
           {daysStrip.map((item) => {
-            const isSelected = item.offset === selectedOffset;
+            const isSelected = item.offset === safeOffset;
             const subCount = item.subjects.length;
 
             return (
@@ -199,7 +204,7 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
                   }
                 }}
                 className={`slider-day-pill ${isSelected ? 'active' : ''} ${item.isToday ? 'is-today' : ''}`}
-                title={`Dia ${item.cycleDayNumber}: ${item.weekday} (${item.dayDateStr}) - Clique para selecionar`}
+                title={`Dia ${item.cycleDayNumber} de ${cycleLength}: ${item.weekday} (${item.dayDateStr}) - Clique para selecionar`}
               >
                 {/* Header do Card */}
                 <div className="flex items-center justify-between w-full">
@@ -212,7 +217,9 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
 
                 {/* Sub-header com dia do ciclo */}
                 <div className="flex items-center justify-between text-[10px] text-[var(--cal-text-muted)]">
-                  <span className="slider-day-cycle-num">Dia {item.cycleDayNumber}</span>
+                  <span className="slider-day-cycle-num font-bold">
+                    Dia {item.cycleDayNumber}
+                  </span>
                   {subCount > 0 && (
                     <span className="text-[10px] opacity-75">{subCount} mat.</span>
                   )}
