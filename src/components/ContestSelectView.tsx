@@ -16,7 +16,8 @@ import {
   LogOut,
   Layers,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 
 interface ContestSelectViewProps {
@@ -33,6 +34,7 @@ interface ContestSelectViewProps {
   onToggleStandby: (contestId: string) => void;
   onRenameContest: (contestId: string, newName: string) => void;
   onDeleteContest: (contestId: string) => void;
+  onResetContest?: (contestId: string) => void;
   isDark: boolean;
   onToggleTheme: (dark: boolean) => void;
   onLogout: () => void;
@@ -47,6 +49,7 @@ export const ContestSelectView: React.FC<ContestSelectViewProps> = ({
   onToggleStandby,
   onRenameContest,
   onDeleteContest,
+  onResetContest,
   isDark,
   onToggleTheme,
   onLogout
@@ -66,6 +69,9 @@ export const ContestSelectView: React.FC<ContestSelectViewProps> = ({
 
   // Delete modal
   const [deletingContest, setDeletingContest] = useState<ContestWorkspace | null>(null);
+
+  // Reset / Zerar modal
+  const [resettingContest, setResettingContest] = useState<ContestWorkspace | null>(null);
 
   const filteredContests = contests.filter((c) => {
     if (filter === 'active') return !c.is_standby;
@@ -374,6 +380,20 @@ export const ContestSelectView: React.FC<ContestSelectViewProps> = ({
                       <Pencil className="w-3 h-3" />
                     </button>
 
+                    {topicCount > 0 && onResetContest && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setResettingContest(c);
+                        }}
+                        className="p-1.5 rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:text-amber-500 hover:border-amber-500/30 transition-colors"
+                        title="Zerar conteúdos deste concurso"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </button>
+                    )}
+
                     {contests.length > 1 && (
                       <button
                         type="button"
@@ -620,6 +640,54 @@ export const ContestSelectView: React.FC<ContestSelectViewProps> = ({
                 onClick={handleConfirmDelete}
               >
                 Sim, Excluir Concurso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Zerar Concurso */}
+      {resettingContest && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-[440px]">
+            <div className="modal-header">
+              <h3 className="modal-title flex items-center gap-2 text-amber-500">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Zerar Conteúdos do Concurso</span>
+              </h3>
+              <button className="btn-close-modal" onClick={() => setResettingContest(null)}>
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 py-2 text-xs text-[var(--text-muted)]">
+              <p>
+                Deseja zerar todas as matérias e conteúdos cadastrados para <strong className="text-[var(--text)]">{resettingContest.name}</strong>?
+              </p>
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px] leading-relaxed">
+                <strong>Atenção:</strong> O concurso continuará existindo normalmente, mas todos os {resettingContest.topics?.length || 0} conteúdos e disciplinas serão removidos para que você comece do zero e monte conforme sua demanda.
+              </div>
+            </div>
+
+            <div className="modal-actions mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="btn-auth-submit bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] py-1.5 px-4 text-xs"
+                onClick={() => setResettingContest(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-auth-submit !bg-amber-600 hover:!bg-amber-700 !text-white py-1.5 px-4 text-xs font-bold"
+                onClick={() => {
+                  if (onResetContest && resettingContest) {
+                    onResetContest(resettingContest.id);
+                  }
+                  setResettingContest(null);
+                }}
+              >
+                Confirmar e Zerar
               </button>
             </div>
           </div>

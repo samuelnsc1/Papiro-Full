@@ -84,6 +84,12 @@ export const App: React.FC = () => {
     return localStorage.getItem("papiro_theme_mode") === "dark";
   });
 
+  // Track latest activeContestId in a ref to avoid stale closures in loadUserData
+  const activeContestIdRef = useRef<string | null>(activeContestId);
+  useEffect(() => {
+    activeContestIdRef.current = activeContestId;
+  }, [activeContestId]);
+
   // Track latest state for sync persistence
   const latestStateRef = useRef({
     studyCycle,
@@ -225,6 +231,7 @@ export const App: React.FC = () => {
     const target = contests.find((c) => c.id === contestId);
     if (!target) return;
 
+    activeContestIdRef.current = target.id;
     setActiveContestId(target.id);
     setTopics(target.topics || []);
     setStudyCycle(target.study_cycle || DEFAULT_CYCLE);
@@ -249,10 +256,11 @@ export const App: React.FC = () => {
 
   // Switch back to contest selection screen
   const handleSwitchContest = useCallback(() => {
-    if (activeContestId) {
+    const currentId = activeContestIdRef.current;
+    if (currentId) {
       setContests((prev) => {
         const next = prev.map((c) => {
-          if (c.id === activeContestId) {
+          if (c.id === currentId) {
             return {
               ...c,
               name: userProfile.project_name || c.name,
@@ -278,9 +286,39 @@ export const App: React.FC = () => {
         return next;
       });
     }
+    activeContestIdRef.current = null;
     setActiveContestId(null);
+    setTopics([]);
+    setRegisteredSubjects([]);
+    setStudySessions([]);
     setCurrentView('dashboard');
-  }, [activeContestId, userProfile, studyCycle, registeredSubjects, topics, studySessions, persistContestsData]);
+  }, [userProfile, studyCycle, registeredSubjects, topics, studySessions, persistContestsData]);
+
+  // Reset / Zero out all topics and subjects in a contest
+  const handleResetContest = useCallback((contestId: string) => {
+    setContests((prev) => {
+      const next = prev.map((c) => {
+        if (c.id === contestId) {
+          return {
+            ...c,
+            topics: [],
+            registered_subjects: [],
+            study_sessions: [],
+            study_cycle: DEFAULT_CYCLE
+          };
+        }
+        return c;
+      });
+      persistContestsData(next, activeContestIdRef.current);
+      return next;
+    });
+    if (activeContestIdRef.current === contestId) {
+      setTopics([]);
+      setRegisteredSubjects([]);
+      setStudySessions([]);
+      setStudyCycle(DEFAULT_CYCLE);
+    }
+  }, [persistContestsData]);
 
   // Create a brand new independent contest workspace
   const handleCreateContest = useCallback((
@@ -324,11 +362,7 @@ export const App: React.FC = () => {
       edital: { edital_title: name.trim() }
     };
 
-    const nextContests = [...contests, newWorkspace];
-    setContests(nextContests);
-    persistContestsData(nextContests, newId);
-
-    // Directly enter the new contest
+    activeContestIdRef.current = newId;
     setActiveContestId(newId);
     setTopics(initialTopics);
     setStudyCycle(DEFAULT_CYCLE);
@@ -346,8 +380,15 @@ export const App: React.FC = () => {
       edital_file_name: '',
       edital_file_base64: ''
     }));
+
+    setContests((prev) => {
+      const nextContests = [...prev, newWorkspace];
+      persistContestsData(nextContests, newId);
+      return nextContests;
+    });
+
     setCurrentView('dashboard');
-  }, [contests, persistContestsData]);
+  }, [persistContestsData]);
 
   // Toggle Standby
   const handleToggleStandby = useCallback((contestId: string) => {
@@ -533,25 +574,6 @@ export const App: React.FC = () => {
       }
       const finalEdital = topicEdital || cachedEdital || {};
 
-      setUserProfile({
-        id: user.id,
-        name: finalName,
-        email: profile?.email || user.email || '',
-        project_name: finalProject,
-        avatar_url: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        exam_published: finalExamPublished,
-        exam_date: finalExamDate,
-        exam_days: finalExamDays,
-        edital_title: finalEdital.edital_title || '',
-        edital_url: finalEdital.edital_url || '',
-        edital_notes: finalEdital.edital_notes || '',
-        edital_file_name: finalEdital.edital_file_name || '',
-        edital_file_base64: finalEdital.edital_file_base64 || ''
-      });
-
-      setTopics(loadedTopics);
-      setStudyCycle(currentCycle);
-
       // Build registered subjects list strictly from THIS user's data (filtering system internal names)
       const subs = new Set<string>();
       dbCustomSubjects.forEach((s) => { if (s && !s.startsWith('__')) subs.add(s.toUpperCase()); });
@@ -562,7 +584,7 @@ export const App: React.FC = () => {
         }
       });
       subs.delete('__SYSTEM_CONFIG__');
-      setRegisteredSubjects(Array.from(subs));
+      const defaultSubs = Array.from(subs);
 
       // 4. Study Sessions strictly for this user
       const { data: dbSessions } = await supabase
@@ -570,8 +592,7 @@ export const App: React.FC = () => {
         .select('*')
         .eq('user_id', user.id)
         .order('study_date', { ascending: true });
-
-      setStudySessions(dbSessions || []);
+      const defaultSessions = dbSessions || [];
 
       // 5. Workspaces Multi-Concursos Resolution
       let loadedContests: ContestWorkspace[] | null = null;
@@ -613,6 +634,8 @@ export const App: React.FC = () => {
         }
       }
 
+      let didSanitizeContamination = false;
+
       if (loadedContests && loadedContests.length > 0) {
         // Guarantee backwards compatibility: if default workspace has empty topics but db has loadedTopics, hydrate it
         const defaultIdx = loadedContests.findIndex((c) => c.id === 'default');
@@ -620,27 +643,99 @@ export const App: React.FC = () => {
           if ((!loadedContests[defaultIdx].topics || loadedContests[defaultIdx].topics.length === 0) && loadedTopics.length > 0) {
             loadedContests[defaultIdx].topics = loadedTopics;
           }
-          if ((!loadedContests[defaultIdx].study_sessions || loadedContests[defaultIdx].study_sessions.length === 0) && (dbSessions || []).length > 0) {
-            loadedContests[defaultIdx].study_sessions = dbSessions || [];
+          if ((!loadedContests[defaultIdx].study_sessions || loadedContests[defaultIdx].study_sessions.length === 0) && defaultSessions.length > 0) {
+            loadedContests[defaultIdx].study_sessions = defaultSessions;
+          }
+          if (!loadedContests[defaultIdx].registered_subjects || loadedContests[defaultIdx].registered_subjects.length === 0) {
+            loadedContests[defaultIdx].registered_subjects = defaultSubs;
           }
           if (!loadedContests[defaultIdx].name || loadedContests[defaultIdx].name === 'MEU PROJETO') {
             loadedContests[defaultIdx].name = finalProject;
           }
         }
 
-        const sanitized = loadedContests.map((c) => ({
-          ...c,
-          study_cycle: c.study_cycle || DEFAULT_CYCLE,
-          registered_subjects: c.registered_subjects || [],
-          topics: c.topics || [],
-          study_sessions: c.study_sessions || []
-        }));
+        const sanitized = loadedContests.map((c) => {
+          // Detect and purge if any non-default contest was contaminated with TRT 3 progress
+          const isContaminatedOficial = (c.id !== 'default') && (
+            c.name.toUpperCase().includes('OFICIAL') || 
+            c.name.toUpperCase().includes('JUSTIÇA') ||
+            (c.topics && c.topics.some((t: any) => t.id && String(t.id).startsWith('trt3_') && !c.name.toUpperCase().includes('TRT')))
+          );
+
+          if (isContaminatedOficial) {
+            didSanitizeContamination = true;
+            return {
+              ...c,
+              study_cycle: DEFAULT_CYCLE,
+              registered_subjects: [],
+              topics: [],
+              study_sessions: []
+            };
+          }
+
+          return {
+            ...c,
+            study_cycle: c.study_cycle || DEFAULT_CYCLE,
+            registered_subjects: c.registered_subjects || [],
+            topics: c.topics || [],
+            study_sessions: c.study_sessions || []
+          };
+        });
 
         setContests(sanitized);
-        setActiveContestId((prev) => {
-          if (prev && sanitized.some((c) => c.id === prev)) return prev;
-          return null;
-        });
+
+        const currentActiveId = activeContestIdRef.current;
+        const activeWorkspace = currentActiveId ? sanitized.find((c) => c.id === currentActiveId) : null;
+
+        if (activeWorkspace) {
+          setActiveContestId(activeWorkspace.id);
+          activeContestIdRef.current = activeWorkspace.id;
+          setTopics(activeWorkspace.topics || []);
+          setStudyCycle(activeWorkspace.study_cycle || DEFAULT_CYCLE);
+          setRegisteredSubjects(activeWorkspace.registered_subjects || []);
+          setStudySessions(activeWorkspace.study_sessions || []);
+          setUserProfile({
+            id: user.id,
+            name: finalName,
+            email: profile?.email || user.email || '',
+            project_name: activeWorkspace.name,
+            avatar_url: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            exam_published: activeWorkspace.exam_published !== false,
+            exam_date: activeWorkspace.exam_date || '2027-02-17',
+            exam_days: activeWorkspace.exam_days !== undefined ? activeWorkspace.exam_days : null,
+            edital_title: activeWorkspace.edital?.edital_title || activeWorkspace.name,
+            edital_url: activeWorkspace.edital?.edital_url || '',
+            edital_notes: activeWorkspace.edital?.edital_notes || '',
+            edital_file_name: activeWorkspace.edital?.edital_file_name || '',
+            edital_file_base64: activeWorkspace.edital?.edital_file_base64 || ''
+          });
+        } else {
+          setActiveContestId(null);
+          activeContestIdRef.current = null;
+          setTopics([]);
+          setStudyCycle(DEFAULT_CYCLE);
+          setRegisteredSubjects([]);
+          setStudySessions([]);
+          setUserProfile({
+            id: user.id,
+            name: finalName,
+            email: profile?.email || user.email || '',
+            project_name: finalProject,
+            avatar_url: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            exam_published: finalExamPublished,
+            exam_date: finalExamDate,
+            exam_days: finalExamDays,
+            edital_title: finalEdital.edital_title || '',
+            edital_url: finalEdital.edital_url || '',
+            edital_notes: finalEdital.edital_notes || '',
+            edital_file_name: finalEdital.edital_file_name || '',
+            edital_file_base64: finalEdital.edital_file_base64 || ''
+          });
+        }
+
+        if (didSanitizeContamination) {
+          persistContestsData(sanitized, activeWorkspace?.id || null, user.id);
+        }
       } else {
         // Synthesize first contest workspace with 100% of user's existing progress
         const initialContest: ContestWorkspace = {
@@ -652,17 +747,46 @@ export const App: React.FC = () => {
           exam_date: finalExamDate,
           exam_days: finalExamDays,
           study_cycle: currentCycle,
-          registered_subjects: Array.from(subs),
+          registered_subjects: defaultSubs,
           topics: loadedTopics,
-          study_sessions: dbSessions || [],
+          study_sessions: defaultSessions,
           edital: finalEdital
         };
 
         setContests([initialContest]);
-        setActiveContestId((prev) => {
-          if (prev === 'default') return 'default';
-          return null;
+        const currentActiveId = activeContestIdRef.current;
+        if (currentActiveId === 'default') {
+          setActiveContestId('default');
+          activeContestIdRef.current = 'default';
+          setTopics(loadedTopics);
+          setStudyCycle(currentCycle);
+          setRegisteredSubjects(defaultSubs);
+          setStudySessions(defaultSessions);
+        } else {
+          setActiveContestId(null);
+          activeContestIdRef.current = null;
+          setTopics([]);
+          setStudyCycle(DEFAULT_CYCLE);
+          setRegisteredSubjects([]);
+          setStudySessions([]);
+        }
+
+        setUserProfile({
+          id: user.id,
+          name: finalName,
+          email: profile?.email || user.email || '',
+          project_name: finalProject,
+          avatar_url: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          exam_published: finalExamPublished,
+          exam_date: finalExamDate,
+          exam_days: finalExamDays,
+          edital_title: finalEdital.edital_title || '',
+          edital_url: finalEdital.edital_url || '',
+          edital_notes: finalEdital.edital_notes || '',
+          edital_file_name: finalEdital.edital_file_name || '',
+          edital_file_base64: finalEdital.edital_file_base64 || ''
         });
+
         persistContestsData([initialContest], null, user.id);
       }
     } catch (err) {
@@ -1484,7 +1608,7 @@ export const App: React.FC = () => {
         return next;
       });
 
-      if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+      if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
         const { data } = await supabase.from('study_topics').insert({
           user_id: currentUser.id,
           subject: cleanSubject,
@@ -1532,7 +1656,7 @@ export const App: React.FC = () => {
       return next;
     });
 
-    if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+    if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       await supabase.from('study_topics').delete().eq('user_id', currentUser.id).eq('subject', subject);
       const payload = {
         cycle: updatedCycle,
@@ -1572,7 +1696,7 @@ export const App: React.FC = () => {
       return next;
     });
 
-    if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+    if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       const { data } = await supabase.from('study_topics').insert({
         user_id: currentUser.id,
         subject: cleanSub,
@@ -1604,7 +1728,7 @@ export const App: React.FC = () => {
       return next;
     });
 
-    if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+    if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       await supabase
         .from('study_topics')
         .update({ completed })
@@ -1622,7 +1746,7 @@ export const App: React.FC = () => {
       return next;
     });
 
-    if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+    if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       await supabase
         .from('study_topics')
         .update({ last_review: todayStr })
@@ -1647,7 +1771,7 @@ export const App: React.FC = () => {
       return next;
     });
 
-    if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+    if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       await supabase
         .from('study_topics')
         .update({
@@ -1670,7 +1794,7 @@ export const App: React.FC = () => {
       return next;
     });
 
-    if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+    if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       await supabase
         .from('study_topics')
         .delete()
@@ -1695,7 +1819,7 @@ export const App: React.FC = () => {
       return next;
     });
 
-    if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+    if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       await supabase.from('study_sessions').insert({
         user_id: currentUser.id,
         subject,
@@ -1741,7 +1865,7 @@ export const App: React.FC = () => {
       return next;
     });
 
-    if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
+    if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       try {
         const dbPayload = payload.map((p) => ({ ...p, user_id: currentUser.id }));
         await supabase.from('study_topics').insert(dbPayload);
@@ -1796,6 +1920,7 @@ export const App: React.FC = () => {
           onToggleStandby={handleToggleStandby}
           onRenameContest={handleRenameContest}
           onDeleteContest={handleDeleteContest}
+          onResetContest={handleResetContest}
           isDark={isDark}
           onToggleTheme={setIsDark}
           onLogout={() => setIsLogoutModalOpen(true)}
