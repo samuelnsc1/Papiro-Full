@@ -90,6 +90,9 @@ export const App: React.FC = () => {
     activeContestIdRef.current = activeContestId;
   }, [activeContestId]);
 
+  // Track timestamp of last local cloud persist to prevent self-triggering Realtime loops
+  const lastSaveTimeRef = useRef<number>(0);
+
   // Track latest state for sync persistence
   const latestStateRef = useRef({
     studyCycle,
@@ -146,6 +149,8 @@ export const App: React.FC = () => {
   ) => {
     const uid = userId || currentUser?.id;
     if (!uid) return;
+
+    lastSaveTimeRef.current = Date.now();
 
     // 1. LocalStorage for instant access & offline cache
     try {
@@ -210,10 +215,11 @@ export const App: React.FC = () => {
 
   // Helper to update active contest inside contests array
   const updateActiveContest = useCallback((updater: (c: ContestWorkspace) => Partial<ContestWorkspace>) => {
-    if (!activeContestId) return;
+    const currentId = activeContestIdRef.current || activeContestId;
+    if (!currentId) return;
     setContests((prev) => {
       const next = prev.map((c) => {
-        if (c.id === activeContestId) {
+        if (c.id === currentId) {
           return {
             ...c,
             ...updater(c)
@@ -221,7 +227,7 @@ export const App: React.FC = () => {
         }
         return c;
       });
-      persistContestsData(next, activeContestId);
+      persistContestsData(next, currentId);
       return next;
     });
   }, [activeContestId, persistContestsData]);
@@ -655,29 +661,31 @@ export const App: React.FC = () => {
         }
 
         const sanitized = loadedContests.map((c) => {
-          // Detect and purge if any non-default contest was contaminated with TRT 3 progress
-          const isContaminatedOficial = (c.id !== 'default') && (
-            c.name.toUpperCase().includes('OFICIAL') || 
-            c.name.toUpperCase().includes('JUSTIÇA') ||
-            (c.topics && c.topics.some((t: any) => t.id && String(t.id).startsWith('trt3_') && !c.name.toUpperCase().includes('TRT')))
-          );
+          // If a non-TRT contest has any accidentally leaked TRT-3 sample topics, clean ONLY those leaked topics
+          const isNonTrtContest = c.id !== 'default' && !c.name.toUpperCase().includes('TRT');
+          let currentTopics = c.topics || [];
 
-          if (isContaminatedOficial) {
+          if (isNonTrtContest && currentTopics.some((t: any) => t.id && String(t.id).startsWith('trt3_'))) {
             didSanitizeContamination = true;
-            return {
-              ...c,
-              study_cycle: DEFAULT_CYCLE,
-              registered_subjects: [],
-              topics: [],
-              study_sessions: []
-            };
+            currentTopics = currentTopics.filter((t: any) => !String(t.id).startsWith('trt3_'));
           }
+
+          // Ensure registered_subjects has all explicitly registered subjects PLUS any subjects that have topics
+          const subjectsSet = new Set<string>();
+          (c.registered_subjects || []).forEach((s: string) => {
+            if (s && !s.startsWith('__')) subjectsSet.add(s.toUpperCase());
+          });
+          currentTopics.forEach((t: Topic) => {
+            if (t.subject && !t.subject.startsWith('__')) {
+              subjectsSet.add(t.subject.toUpperCase());
+            }
+          });
 
           return {
             ...c,
             study_cycle: c.study_cycle || DEFAULT_CYCLE,
-            registered_subjects: c.registered_subjects || [],
-            topics: c.topics || [],
+            registered_subjects: Array.from(subjectsSet),
+            topics: currentTopics,
             study_sessions: c.study_sessions || []
           };
         });
@@ -806,6 +814,9 @@ export const App: React.FC = () => {
         table: 'study_topics',
         filter: `user_id=eq.${currentUser.id}`
       }, () => {
+        if (Date.now() - lastSaveTimeRef.current < 2500) {
+          return;
+        }
         loadUserData(currentUser);
       })
       .on('postgres_changes', {
@@ -814,6 +825,9 @@ export const App: React.FC = () => {
         table: 'user_settings',
         filter: `user_id=eq.${currentUser.id}`
       }, () => {
+        if (Date.now() - lastSaveTimeRef.current < 2500) {
+          return;
+        }
         loadUserData(currentUser);
       })
       .subscribe();
@@ -1558,24 +1572,11 @@ export const App: React.FC = () => {
     const clean = name.trim().toUpperCase();
     if (clean.startsWith('__')) return;
     if (!registeredSubjects.includes(clean)) {
-      setRegisteredSubjects((prev) => {
-        const next = [...prev, clean];
-        if (currentUser?.id && !currentUser.id.startsWith('guest_')) {
-          const payload = {
-            cycle: studyCycle,
-            project_name: userProfile.project_name || 'MEU PROJETO',
-            exam_published: userProfile.exam_published !== false,
-            exam_date: userProfile.exam_date || '2027-02-17',
-            exam_days: userProfile.exam_days ?? null,
-            registered_subjects: next
-          };
-          supabase.from('user_settings').upsert({
-            user_id: currentUser.id,
-            cycle_config: payload
-          }, { onConflict: 'user_id' }).then(() => {});
-        }
-        return next;
-      });
+      const next = [...registeredSubjects, clean];
+      setRegisteredSubjects(next);
+      updateActiveContest((c) => ({
+        registered_subjects: Array.from(new Set([...(c.registered_subjects || []), clean]))
+      }));
     }
   };
 
@@ -1584,11 +1585,17 @@ export const App: React.FC = () => {
     const cleanSubject = subject.trim().toUpperCase();
     if (cleanSubject.startsWith('__')) return;
 
-    handleRegisterSubject(cleanSubject);
+    // 1. Calculate updated subjects
+    const nextSubs = registeredSubjects.includes(cleanSubject)
+      ? registeredSubjects
+      : [...registeredSubjects, cleanSubject];
+    setRegisteredSubjects(nextSubs);
 
-    // Only create a topic if the user explicitly provided an initial topic name!
+    // 2. If first topic provided, calculate updated topics
+    let nextTopics = topics;
+    let tempId: string | null = null;
     if (firstTopic && firstTopic.trim()) {
-      const tempId = 'top_' + Math.random().toString(36).substring(2, 9);
+      tempId = 'top_' + Math.random().toString(36).substring(2, 9);
       const newTopic: Topic = {
         id: tempId,
         subject: cleanSubject,
@@ -1601,34 +1608,36 @@ export const App: React.FC = () => {
         yellow: 15,
         red: 15
       };
+      nextTopics = [...topics, newTopic];
+      setTopics(nextTopics);
+    }
 
-      setTopics((prev) => {
-        const next = [...prev, newTopic];
-        updateActiveContest(() => ({ topics: next }));
-        return next;
-      });
+    // 3. Atomically persist both registered_subjects and topics to active contest workspace!
+    updateActiveContest((c) => ({
+      registered_subjects: Array.from(new Set([...(c.registered_subjects || []), cleanSubject])),
+      topics: nextTopics
+    }));
 
-      if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
-        const { data } = await supabase.from('study_topics').insert({
-          user_id: currentUser.id,
-          subject: cleanSubject,
-          title: firstTopic.trim(),
-          completed: false,
-          link: '',
-          obs: '',
-          last_review: getTodayString(),
-          green_limit: 10,
-          yellow_limit: 15,
-          red_limit: 15
-        }).select().single();
+    if (tempId && currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
+      const { data } = await supabase.from('study_topics').insert({
+        user_id: currentUser.id,
+        subject: cleanSubject,
+        title: firstTopic!.trim(),
+        completed: false,
+        link: '',
+        obs: '',
+        last_review: getTodayString(),
+        green_limit: 10,
+        yellow_limit: 15,
+        red_limit: 15
+      }).select().single();
 
-        if (data) {
-          setTopics((prev) => {
-            const next = prev.map((t) => t.id === tempId ? { ...t, id: String(data.id) } : t);
-            updateActiveContest(() => ({ topics: next }));
-            return next;
-          });
-        }
+      if (data) {
+        setTopics((prev) => {
+          const updatedWithDbId = prev.map((t) => t.id === tempId ? { ...t, id: String(data.id) } : t);
+          updateActiveContest(() => ({ topics: updatedWithDbId }));
+          return updatedWithDbId;
+        });
       }
     }
   };
@@ -1646,15 +1655,14 @@ export const App: React.FC = () => {
     }));
     setStudyCycle(updatedCycle);
 
-    setTopics((prev) => {
-      const next = prev.filter((t) => t.subject !== subject);
-      updateActiveContest(() => ({
-        topics: next,
-        registered_subjects: nextSubs,
-        study_cycle: updatedCycle
-      }));
-      return next;
-    });
+    const nextTopics = topics.filter((t) => t.subject !== subject);
+    setTopics(nextTopics);
+
+    updateActiveContest(() => ({
+      topics: nextTopics,
+      registered_subjects: nextSubs,
+      study_cycle: updatedCycle
+    }));
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       await supabase.from('study_topics').delete().eq('user_id', currentUser.id).eq('subject', subject);
@@ -1690,11 +1698,17 @@ export const App: React.FC = () => {
       red: 15
     };
 
-    setTopics((prev) => {
-      const next = [...prev, newTopic];
-      updateActiveContest(() => ({ topics: next }));
-      return next;
-    });
+    const nextSubs = registeredSubjects.includes(cleanSub)
+      ? registeredSubjects
+      : [...registeredSubjects, cleanSub];
+    setRegisteredSubjects(nextSubs);
+
+    const nextTopics = [...topics, newTopic];
+    setTopics(nextTopics);
+    updateActiveContest((c) => ({
+      registered_subjects: Array.from(new Set([...(c.registered_subjects || []), cleanSub])),
+      topics: nextTopics
+    }));
 
     if (currentUser?.id && !currentUser.id.startsWith('guest_') && (!activeContestIdRef.current || activeContestIdRef.current === 'default')) {
       const { data } = await supabase.from('study_topics').insert({
@@ -1712,9 +1726,9 @@ export const App: React.FC = () => {
 
       if (data) {
         setTopics((prev) => {
-          const next = prev.map((t) => t.id === tempId ? { ...t, id: String(data.id) } : t);
-          updateActiveContest(() => ({ topics: next }));
-          return next;
+          const updatedWithDbId = prev.map((t) => t.id === tempId ? { ...t, id: String(data.id) } : t);
+          updateActiveContest(() => ({ topics: updatedWithDbId }));
+          return updatedWithDbId;
         });
       }
     }
