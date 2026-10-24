@@ -41,6 +41,15 @@ export interface UserProfile {
   edital_file_base64?: string;
 }
 
+export interface DailyGoalRecord {
+  date: string; // YYYY-MM-DD
+  cycleDayNumber?: number;
+  status: 'completed' | 'partial' | 'missed';
+  subjects: string[];
+  totalSeconds?: number;
+  completedAt?: string;
+}
+
 export interface ContestWorkspace {
   id: string;
   name: string;
@@ -50,6 +59,9 @@ export interface ContestWorkspace {
   exam_date?: string;
   exam_days?: number | null;
   study_cycle: CycleDay[];
+  active_cycle_day?: number; // 1-indexed (1 to N)
+  cycle_completed_subjects?: { [dayNumber: number]: string[] };
+  daily_goals_history?: DailyGoalRecord[];
   registered_subjects: string[];
   topics: Topic[];
   study_sessions: StudySession[];

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
-import { Topic, CycleDay, StudySession, UserProfile, ContestWorkspace } from './types';
+import { Topic, CycleDay, StudySession, UserProfile, ContestWorkspace, DailyGoalRecord } from './types';
 import { calcDays, evalStatus, getTodayString, getCycleDayIndexForDate } from './utils/formatters';
 
 import { Header } from './components/Header';
@@ -11,6 +11,7 @@ import { MetricsRow } from './components/MetricsRow';
 import { AccordionList } from './components/AccordionList';
 import { FloatingTimer } from './components/FloatingTimer';
 import { StatsPage } from './components/StatsPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 import { CycleConfigModal } from './components/modals/CycleConfigModal';
 import { TopicConfigModal } from './components/modals/TopicConfigModal';
@@ -20,6 +21,7 @@ import { NewSubjectModal } from './components/modals/NewSubjectModal';
 import { ManageSubjectsModal } from './components/modals/ManageSubjectsModal';
 import { LogoutConfirmModal } from './components/modals/LogoutConfirmModal';
 import { EditalModal } from './components/modals/EditalModal';
+import { HistoryCalendarModal } from './components/modals/HistoryCalendarModal';
 import { Timer, BarChart3, FileText } from 'lucide-react';
 
 export const TRT3_SAMPLE_TOPICS = [
@@ -62,6 +64,12 @@ export const App: React.FC = () => {
   const [studyCycle, setStudyCycle] = useState<CycleDay[]>(DEFAULT_CYCLE);
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
   const [registeredSubjects, setRegisteredSubjects] = useState<string[]>([]);
+
+  // Active cycle progression & goal history state
+  const [activeCycleDay, setActiveCycleDay] = useState<number>(1);
+  const [cycleCompletedSubjects, setCycleCompletedSubjects] = useState<{ [dayNumber: number]: string[] }>({});
+  const [dailyGoalsHistory, setDailyGoalsHistory] = useState<DailyGoalRecord[]>([]);
+  const [isHistoryCalendarOpen, setIsHistoryCalendarOpen] = useState(false);
 
   // Navigation & UI state
   const [currentView, setCurrentView] = useState<'dashboard' | 'stats'>('dashboard');
@@ -128,6 +136,10 @@ export const App: React.FC = () => {
     setStudyCycle(DEFAULT_CYCLE);
     setStudySessions([]);
     setRegisteredSubjects([]);
+    setActiveCycleDay(1);
+    setCycleCompletedSubjects({});
+    setDailyGoalsHistory([]);
+    setIsHistoryCalendarOpen(false);
     setUserProfile({
       id: '',
       name: 'Concurseiro',
@@ -243,6 +255,9 @@ export const App: React.FC = () => {
     setStudyCycle(target.study_cycle || DEFAULT_CYCLE);
     setRegisteredSubjects(target.registered_subjects || []);
     setStudySessions(target.study_sessions || []);
+    setActiveCycleDay(target.active_cycle_day || 1);
+    setCycleCompletedSubjects(target.cycle_completed_subjects || {});
+    setDailyGoalsHistory(target.daily_goals_history || []);
 
     setUserProfile((prev) => ({
       ...prev,
@@ -277,6 +292,9 @@ export const App: React.FC = () => {
               registered_subjects: registeredSubjects,
               topics: topics,
               study_sessions: studySessions,
+              active_cycle_day: activeCycleDay,
+              cycle_completed_subjects: cycleCompletedSubjects,
+              daily_goals_history: dailyGoalsHistory,
               edital: {
                 edital_title: userProfile.edital_title || userProfile.project_name || '',
                 edital_url: userProfile.edital_url || '',
@@ -297,8 +315,11 @@ export const App: React.FC = () => {
     setTopics([]);
     setRegisteredSubjects([]);
     setStudySessions([]);
+    setActiveCycleDay(1);
+    setCycleCompletedSubjects({});
+    setDailyGoalsHistory([]);
     setCurrentView('dashboard');
-  }, [userProfile, studyCycle, registeredSubjects, topics, studySessions, persistContestsData]);
+  }, [userProfile, studyCycle, registeredSubjects, topics, studySessions, activeCycleDay, cycleCompletedSubjects, dailyGoalsHistory, persistContestsData]);
 
   // Reset / Zero out all topics and subjects in a contest
   const handleResetContest = useCallback((contestId: string) => {
@@ -310,7 +331,10 @@ export const App: React.FC = () => {
             topics: [],
             registered_subjects: [],
             study_sessions: [],
-            study_cycle: DEFAULT_CYCLE
+            study_cycle: DEFAULT_CYCLE,
+            active_cycle_day: 1,
+            cycle_completed_subjects: {},
+            daily_goals_history: []
           };
         }
         return c;
@@ -323,6 +347,9 @@ export const App: React.FC = () => {
       setRegisteredSubjects([]);
       setStudySessions([]);
       setStudyCycle(DEFAULT_CYCLE);
+      setActiveCycleDay(1);
+      setCycleCompletedSubjects({});
+      setDailyGoalsHistory([]);
     }
   }, [persistContestsData]);
 
@@ -365,6 +392,9 @@ export const App: React.FC = () => {
       registered_subjects: initialSubjects,
       topics: initialTopics,
       study_sessions: [],
+      active_cycle_day: 1,
+      cycle_completed_subjects: {},
+      daily_goals_history: [],
       edital: { edital_title: name.trim() }
     };
 
@@ -374,6 +404,9 @@ export const App: React.FC = () => {
     setStudyCycle(DEFAULT_CYCLE);
     setRegisteredSubjects(initialSubjects);
     setStudySessions([]);
+    setActiveCycleDay(1);
+    setCycleCompletedSubjects({});
+    setDailyGoalsHistory([]);
     setUserProfile((prev) => ({
       ...prev,
       project_name: newWorkspace.name,
@@ -686,7 +719,10 @@ export const App: React.FC = () => {
             study_cycle: c.study_cycle || DEFAULT_CYCLE,
             registered_subjects: Array.from(subjectsSet),
             topics: currentTopics,
-            study_sessions: c.study_sessions || []
+            study_sessions: c.study_sessions || [],
+            active_cycle_day: c.active_cycle_day || 1,
+            cycle_completed_subjects: c.cycle_completed_subjects || {},
+            daily_goals_history: c.daily_goals_history || []
           };
         });
 
@@ -702,6 +738,9 @@ export const App: React.FC = () => {
           setStudyCycle(activeWorkspace.study_cycle || DEFAULT_CYCLE);
           setRegisteredSubjects(activeWorkspace.registered_subjects || []);
           setStudySessions(activeWorkspace.study_sessions || []);
+          setActiveCycleDay(activeWorkspace.active_cycle_day || 1);
+          setCycleCompletedSubjects(activeWorkspace.cycle_completed_subjects || {});
+          setDailyGoalsHistory(activeWorkspace.daily_goals_history || []);
           setUserProfile({
             id: user.id,
             name: finalName,
@@ -724,6 +763,9 @@ export const App: React.FC = () => {
           setStudyCycle(DEFAULT_CYCLE);
           setRegisteredSubjects([]);
           setStudySessions([]);
+          setActiveCycleDay(1);
+          setCycleCompletedSubjects({});
+          setDailyGoalsHistory([]);
           setUserProfile({
             id: user.id,
             name: finalName,
@@ -758,6 +800,9 @@ export const App: React.FC = () => {
           registered_subjects: defaultSubs,
           topics: loadedTopics,
           study_sessions: defaultSessions,
+          active_cycle_day: 1,
+          cycle_completed_subjects: {},
+          daily_goals_history: [],
           edital: finalEdital
         };
 
@@ -770,6 +815,9 @@ export const App: React.FC = () => {
           setStudyCycle(currentCycle);
           setRegisteredSubjects(defaultSubs);
           setStudySessions(defaultSessions);
+          setActiveCycleDay(1);
+          setCycleCompletedSubjects({});
+          setDailyGoalsHistory([]);
         } else {
           setActiveContestId(null);
           activeContestIdRef.current = null;
@@ -777,6 +825,9 @@ export const App: React.FC = () => {
           setStudyCycle(DEFAULT_CYCLE);
           setRegisteredSubjects([]);
           setStudySessions([]);
+          setActiveCycleDay(1);
+          setCycleCompletedSubjects({});
+          setDailyGoalsHistory([]);
         }
 
         setUserProfile({
@@ -1903,12 +1954,92 @@ export const App: React.FC = () => {
     return { redCount: r, yellowCount: y, greenCount: g };
   }, [topics]);
 
-  // Today's subjects in active cycle (Dia 1 / Início do ciclo)
+  // Toggle completion of a subject in the active cycle day
+  const handleToggleCycleSubject = useCallback((dayNumber: number, subject: string) => {
+    const currentCompleted = cycleCompletedSubjects[dayNumber] || [];
+    const exists = currentCompleted.includes(subject);
+    const updated = exists
+      ? currentCompleted.filter((s) => s !== subject)
+      : [...currentCompleted, subject];
+
+    const nextMapping = {
+      ...cycleCompletedSubjects,
+      [dayNumber]: updated
+    };
+
+    setCycleCompletedSubjects(nextMapping);
+    updateActiveContest(() => ({
+      cycle_completed_subjects: nextMapping
+    }));
+  }, [cycleCompletedSubjects, updateActiveContest]);
+
+  // Manually select active cycle day (via navigation arrows or day cards)
+  const handleSelectActiveCycleDay = useCallback((dayNumber: number) => {
+    setActiveCycleDay(dayNumber);
+    updateActiveContest(() => ({
+      active_cycle_day: dayNumber
+    }));
+  }, [updateActiveContest]);
+
+  // Finalize current day & automatically advance to next cycle day
+  const handleAdvanceCycleDay = useCallback(() => {
+    if (!studyCycle || studyCycle.length === 0) return;
+
+    const currentIdx = ((activeCycleDay || 1) - 1) % studyCycle.length;
+    const currentDayPlan = studyCycle[currentIdx];
+    const daySubjects = currentDayPlan?.subjects || [];
+    const completedForDay = cycleCompletedSubjects[activeCycleDay] || [];
+
+    const isFullyCompleted = daySubjects.length > 0 && daySubjects.every((s) => completedForDay.includes(s));
+    const status: 'completed' | 'partial' | 'missed' = isFullyCompleted
+      ? 'completed'
+      : (completedForDay.length > 0 ? 'partial' : 'missed');
+
+    const todayStr = getTodayString();
+    // Sum study sessions recorded today
+    const todaySeconds = studySessions
+      .filter((s) => s.study_date === todayStr)
+      .reduce((sum, s) => sum + (s.seconds || 0), 0);
+
+    const newRecord: DailyGoalRecord = {
+      date: todayStr,
+      cycleDayNumber: activeCycleDay,
+      status,
+      subjects: completedForDay.length > 0 ? completedForDay : daySubjects,
+      totalSeconds: todaySeconds,
+      completedAt: new Date().toISOString()
+    };
+
+    // Update history, replacing any prior record for today with the latest
+    const updatedHistory = [
+      ...dailyGoalsHistory.filter((h) => h.date !== todayStr),
+      newRecord
+    ];
+
+    const nextCycleDay = (activeCycleDay % studyCycle.length) + 1;
+    const updatedCompletedSubjects = {
+      ...cycleCompletedSubjects,
+      [nextCycleDay]: [] // Reset completed subjects for the newly entered day
+    };
+
+    setActiveCycleDay(nextCycleDay);
+    setCycleCompletedSubjects(updatedCompletedSubjects);
+    setDailyGoalsHistory(updatedHistory);
+
+    updateActiveContest(() => ({
+      active_cycle_day: nextCycleDay,
+      cycle_completed_subjects: updatedCompletedSubjects,
+      daily_goals_history: updatedHistory
+    }));
+  }, [studyCycle, activeCycleDay, cycleCompletedSubjects, studySessions, dailyGoalsHistory, updateActiveContest]);
+
+  // Today's subjects in active cycle (reflects activeCycleDay)
   const todaySubjects = useMemo(() => {
     if (!studyCycle || studyCycle.length === 0) return [];
-    const dayItem = studyCycle[0];
+    const dayIdx = ((activeCycleDay || 1) - 1) % studyCycle.length;
+    const dayItem = studyCycle[dayIdx];
     return dayItem?.subjects || [];
-  }, [studyCycle]);
+  }, [studyCycle, activeCycleDay]);
 
   // If not authenticated, show AuthView
   if (!currentUser) {
@@ -1965,10 +2096,18 @@ export const App: React.FC = () => {
           />
 
           {/* 1. Programação de Hoje (Ciclo de Estudos) */}
-          <CalendarHero
-            studyCycle={studyCycle}
-            onOpenCycleConfig={() => setIsCycleConfigOpen(true)}
-          />
+          <ErrorBoundary fallbackTitle="Falha na Programação do Ciclo">
+            <CalendarHero
+              studyCycle={studyCycle}
+              activeCycleDay={activeCycleDay}
+              cycleCompletedSubjects={cycleCompletedSubjects}
+              onToggleSubject={handleToggleCycleSubject}
+              onAdvanceDay={handleAdvanceCycleDay}
+              onSelectActiveCycleDay={handleSelectActiveCycleDay}
+              onOpenCycleConfig={() => setIsCycleConfigOpen(true)}
+              onOpenHistoryCalendar={() => setIsHistoryCalendarOpen(true)}
+            />
+          </ErrorBoundary>
 
           {/* 2. Botões Principais: Cronômetro, Estatísticas e Edital do Concurso */}
           <div className="under-calendar-toolbar">
@@ -2115,6 +2254,16 @@ export const App: React.FC = () => {
         subjects={registeredSubjects}
         onDeleteSubject={handleDeleteSubject}
       />
+
+      <ErrorBoundary fallbackTitle="Falha no Histórico de Metas">
+        <HistoryCalendarModal
+          isOpen={isHistoryCalendarOpen}
+          onClose={() => setIsHistoryCalendarOpen(false)}
+          dailyGoalsHistory={dailyGoalsHistory}
+          studySessions={studySessions}
+          projectName={userProfile.project_name}
+        />
+      </ErrorBoundary>
     </div>
   );
 };
