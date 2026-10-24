@@ -2255,15 +2255,17 @@ export const App: React.FC = () => {
         onDeleteSubject={handleDeleteSubject}
       />
 
-      <ErrorBoundary fallbackTitle="Falha no Histórico de Metas">
-        <HistoryCalendarModal
-          isOpen={isHistoryCalendarOpen}
-          onClose={() => setIsHistoryCalendarOpen(false)}
-          dailyGoalsHistory={dailyGoalsHistory}
-          studySessions={studySessions}
-          projectName={userProfile.project_name}
-        />
-      </ErrorBoundary>
+      {isHistoryCalendarOpen && (
+        <ErrorBoundary fallbackTitle="Falha no Histórico de Metas">
+          <HistoryCalendarModal
+            isOpen={isHistoryCalendarOpen}
+            onClose={() => setIsHistoryCalendarOpen(false)}
+            dailyGoalsHistory={dailyGoalsHistory}
+            studySessions={studySessions}
+            projectName={userProfile.project_name}
+          />
+        </ErrorBoundary>
+      )}
     </div>
   );
 };

@@ -37,21 +37,11 @@ export const HistoryCalendarModal: React.FC<HistoryCalendarModalProps> = ({
   projectName = 'Meu Concurso'
 }) => {
   const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
   const [currentYear, setCurrentYear] = useState<number>(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState<number>(today.getMonth()); // 0-11
-
-  // Hovered day for rich tooltip
-  const [hoveredDateData, setHoveredDateData] = useState<{
-    dateStr: string;
-    dayNum: number;
-    fullDateBR: string;
-    status: 'completed' | 'partial' | 'missed';
-    statusLabel: string;
-    totalSeconds: number;
-    subjects: string[];
-  } | null>(null);
-
-  if (!isOpen) return null;
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(todayStr);
 
   const handlePrevMonth = () => {
     if (currentMonth === 0) {
@@ -60,7 +50,6 @@ export const HistoryCalendarModal: React.FC<HistoryCalendarModalProps> = ({
     } else {
       setCurrentMonth((prev) => prev - 1);
     }
-    setHoveredDateData(null);
   };
 
   const handleNextMonth = () => {
@@ -70,20 +59,17 @@ export const HistoryCalendarModal: React.FC<HistoryCalendarModalProps> = ({
     } else {
       setCurrentMonth((prev) => prev + 1);
     }
-    setHoveredDateData(null);
   };
 
   const handleGoToCurrentMonth = () => {
     setCurrentMonth(today.getMonth());
     setCurrentYear(today.getFullYear());
-    setHoveredDateData(null);
+    setSelectedDateStr(todayStr);
   };
 
   // Calendar math
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayWeekday = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun
-
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   // Pre-index goals and study sessions by date string YYYY-MM-DD
   const goalsMap = useMemo(() => {
@@ -200,6 +186,41 @@ export const HistoryCalendarModal: React.FC<HistoryCalendarModalProps> = ({
       subjects: Array.from(subjectSet)
     });
   }
+
+  // Selected day details for persistent, flicker-free presentation (click-based)
+  const selectedDayData = useMemo(() => {
+    const match = calendarDays.find((c) => !c.isEmpty && c.dateStr === selectedDateStr);
+    if (match && !match.isEmpty) {
+      const dateObj = new Date(`${match.dateStr}T12:00:00`);
+      const fullDateBR = dateObj.toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      return {
+        ...match,
+        fullDateBR
+      };
+    }
+    const firstValid = calendarDays.find((c) => !c.isEmpty);
+    if (firstValid && !firstValid.isEmpty) {
+      const dateObj = new Date(`${firstValid.dateStr}T12:00:00`);
+      const fullDateBR = dateObj.toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      return {
+        ...firstValid,
+        fullDateBR
+      };
+    }
+    return null;
+  }, [calendarDays, selectedDateStr]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -323,42 +344,29 @@ export const HistoryCalendarModal: React.FC<HistoryCalendarModalProps> = ({
               const isCompleted = cell.status === 'completed';
               const isPartial = cell.status === 'partial';
               const isMissed = cell.status === 'missed';
+              const isSelected = selectedDayData?.dateStr === cell.dateStr;
 
               return (
                 <div
                   key={cell.key}
-                  onMouseEnter={() => {
-                    const dateObj = new Date(`${cell.dateStr}T12:00:00`);
-                    const fullDateBR = dateObj.toLocaleDateString('pt-BR', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric'
-                    });
-                    setHoveredDateData({
-                      dateStr: cell.dateStr,
-                      dayNum: cell.dayNum,
-                      fullDateBR,
-                      status: cell.status,
-                      statusLabel: cell.statusLabel,
-                      totalSeconds: cell.totalSeconds,
-                      subjects: cell.subjects
-                    });
-                  }}
-                  onMouseLeave={() => setHoveredDateData(null)}
-                  className={`h-14 rounded-xl p-1.5 border transition-all cursor-pointer flex flex-col justify-between relative group ${
-                    isCompleted
+                  onClick={() => setSelectedDateStr(cell.dateStr)}
+                  className={`h-14 rounded-xl p-1.5 border transition-all cursor-pointer flex flex-col justify-between relative select-none ${
+                    isSelected
+                      ? 'ring-2 ring-sky-400 border-sky-400 bg-sky-500/15 shadow-md shadow-sky-500/10 scale-[1.03] z-10'
+                      : isCompleted
                       ? 'bg-emerald-500/15 border-emerald-500/40 hover:bg-emerald-500/25 hover:border-emerald-400'
                       : isPartial
                       ? 'bg-amber-500/15 border-amber-500/35 hover:bg-amber-500/25 hover:border-amber-400'
                       : 'bg-[var(--surface)] border-[var(--border)] hover:border-sky-500/40'
-                  } ${cell.isToday ? 'ring-2 ring-sky-400 ring-offset-1 ring-offset-[var(--bg)] font-extrabold' : ''}`}
+                  } ${cell.isToday && !isSelected ? 'ring-1 ring-sky-400/70' : ''}`}
                 >
                   {/* Top row: day number and check icon */}
                   <div className="flex items-center justify-between w-full">
                     <span
                       className={`text-xs font-bold leading-none ${
-                        cell.isToday
+                        isSelected
+                          ? 'text-sky-300 font-extrabold'
+                          : cell.isToday
                           ? 'text-sky-400 underline decoration-2'
                           : isCompleted
                           ? 'text-emerald-400'
@@ -397,57 +405,64 @@ export const HistoryCalendarModal: React.FC<HistoryCalendarModalProps> = ({
             })}
           </div>
 
-          {/* Interactive Rich Tooltip on Hover */}
-          {hoveredDateData && (
-            <div className="mt-4 p-3.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] shadow-xl animate-in fade-in duration-150">
-              <div className="flex items-start justify-between gap-3 mb-2">
+          {/* Detailed Info Card for Selected Day (Click-activated, zero hover lag) */}
+          {selectedDayData && (
+            <div className="mt-4 p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] shadow-lg transition-all">
+              <div className="flex items-start justify-between gap-3 mb-2.5">
                 <div>
-                  <h4 className="text-xs font-extrabold text-[var(--text)] capitalize">
-                    {hoveredDateData.fullDateBR}
-                  </h4>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-extrabold text-[var(--text)] capitalize">
+                      {selectedDayData.fullDateBR}
+                    </h4>
+                    {selectedDayData.isToday && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                        Dia Atual
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        hoveredDateData.status === 'completed'
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                        selectedDayData.status === 'completed'
                           ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                          : hoveredDateData.status === 'partial'
+                          : selectedDayData.status === 'partial'
                           ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
                           : 'bg-zinc-500/15 text-[var(--text-muted)] border-zinc-500/30'
                       }`}
                     >
-                      {hoveredDateData.status === 'completed' && <CheckCircle2 className="w-2.5 h-2.5" />}
-                      {hoveredDateData.status === 'partial' && <AlertCircle className="w-2.5 h-2.5" />}
-                      <span>{hoveredDateData.statusLabel}</span>
+                      {selectedDayData.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
+                      {selectedDayData.status === 'partial' && <AlertCircle className="w-3 h-3" />}
+                      <span>{selectedDayData.statusLabel}</span>
                     </span>
 
-                    <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 font-semibold">
-                      <Clock className="w-3 h-3 text-sky-400" />
-                      <span>Tempo total: {formatDuration(hoveredDateData.totalSeconds)}</span>
+                    <span className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 font-semibold bg-[var(--surface-subtle)] px-2.5 py-0.5 rounded-lg border border-[var(--border)]">
+                      <Clock className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Tempo total: {formatDuration(selectedDayData.totalSeconds)}</span>
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Studied Subjects in Tooltip */}
-              <div className="pt-2 border-t border-[var(--border)]/60">
+              {/* Studied Subjects in Selected Day */}
+              <div className="pt-2.5 border-t border-[var(--border)]/70">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5 flex items-center gap-1">
-                  <BookOpen className="w-3 h-3" />
+                  <BookOpen className="w-3 h-3 text-sky-400" />
                   <span>Matérias Concluídas / Estudadas:</span>
                 </div>
-                {hoveredDateData.subjects && hoveredDateData.subjects.length > 0 ? (
+                {selectedDayData.subjects && selectedDayData.subjects.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
-                    {hoveredDateData.subjects.map((sub, sIdx) => (
+                    {selectedDayData.subjects.map((sub, sIdx) => (
                       <span
                         key={sIdx}
-                        className="px-2 py-0.5 rounded-md bg-[var(--surface-subtle)] border border-[var(--border)] text-[10px] font-bold text-[var(--text)]"
+                        className="px-2.5 py-1 rounded-md bg-[var(--surface-subtle)] border border-[var(--border)] text-xs font-bold text-[var(--text)] shadow-xs"
                       >
                         {sub}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <span className="text-[11px] text-[var(--text-muted)] italic">
-                    Nenhuma matéria registrada neste dia.
+                  <span className="text-xs text-[var(--text-muted)] italic block py-0.5">
+                    Nenhuma matéria registrada neste dia. Clique em outro dia do calendário para ver suas matérias.
                   </span>
                 )}
               </div>
