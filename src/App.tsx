@@ -2121,7 +2121,10 @@ export const App: React.FC = () => {
             </button>
             <button
               className="btn-study-action secondary-btn"
-              onClick={() => setCurrentView('stats')}
+              onClick={() => {
+                setIsHistoryCalendarOpen(false);
+                setCurrentView('stats');
+              }}
               title="Relatório de tempo e estatísticas"
             >
               <BarChart3 className="w-4 h-4" />
@@ -2256,7 +2259,10 @@ export const App: React.FC = () => {
       />
 
       {isHistoryCalendarOpen && (
-        <ErrorBoundary fallbackTitle="Falha no Histórico de Metas">
+        <ErrorBoundary
+          fallbackTitle="Falha no Histórico de Metas"
+          onReset={() => setIsHistoryCalendarOpen(false)}
+        >
           <HistoryCalendarModal
             isOpen={isHistoryCalendarOpen}
             onClose={() => setIsHistoryCalendarOpen(false)}

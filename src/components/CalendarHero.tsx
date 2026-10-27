@@ -56,19 +56,31 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
     setSelectedDayIndex(safeActiveDay - 1);
   }, [safeActiveDay]);
 
+  // Calendar anchor: Real today calculation
+  // Monday = 0, Tuesday = 1, Wednesday = 2, Thursday = 3, Friday = 4, Saturday = 5, Sunday = 6
+  const currentDayOfWeek = (today.getDay() + 6) % 7;
+  const realTodayCycleDay = (currentDayOfWeek % cycleLength) + 1; // Dia 2 for Tuesday in a 7-day cycle
+  const realTodayDateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const realTodayWeekday = DAYS_ABBR[today.getDay()]; // e.g. "TER"
+  const realTodayFullWeekday = today.toLocaleDateString('pt-BR', { weekday: 'long' });
+
+  // Fixed calendar anchor: Monday of current week (Segunda a Domingo)
+  const mondayOfCurrentWeek = new Date(today);
+  mondayOfCurrentWeek.setDate(today.getDate() - currentDayOfWeek);
+  mondayOfCurrentWeek.setHours(0, 0, 0, 0);
+
   // Build the cycle strip for all days in the cycle
   const daysStrip = [];
   for (let i = 0; i < cycleLength; i++) {
     const cycleDayNum = i + 1;
     const cycleItem = studyCycle[i] || { day: cycleDayNum, subjects: [] };
 
-    // Offset relative to current active cycle day:
-    // If activeCycleDay is 1, day 1 is Today (offset 0), day 2 is Tomorrow (offset +1), etc.
-    const relativeOffset = i - (safeActiveDay - 1);
-    const d = new Date();
-    d.setDate(today.getDate() + relativeOffset);
+    // Stable calendar date: starts on Monday of this week and proceeds forward
+    const d = new Date(mondayOfCurrentWeek);
+    d.setDate(mondayOfCurrentWeek.getDate() + i);
 
     const isThisActiveDay = cycleDayNum === safeActiveDay;
+    const isToday = d.toDateString() === today.toDateString() || cycleDayNum === realTodayCycleDay;
     const completedSubs = cycleCompletedSubjects[cycleDayNum] || [];
     const subjects = cycleItem.subjects || [];
     const isDayFullyDone = subjects.length > 0 && subjects.every((s) => completedSubs.includes(s));
@@ -84,6 +96,7 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
       subjects,
       completedSubs,
       isThisActiveDay,
+      isToday,
       isDayFullyDone,
       isDayPartiallyDone
     });
@@ -93,6 +106,7 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
   const safeIndex = selectedDayIndex < daysStrip.length ? selectedDayIndex : 0;
   const selectedItem = daysStrip[safeIndex] || daysStrip[0];
   const isSelectedActive = selectedItem.cycleDayNumber === safeActiveDay;
+  const isSelectedToday = selectedItem.cycleDayNumber === realTodayCycleDay;
 
   const currentDaySubjects = selectedItem.subjects || [];
   const currentCompletedSubs = cycleCompletedSubjects[selectedItem.cycleDayNumber] || [];
@@ -138,13 +152,13 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
     <div className="calendar-hero-card">
       {/* Top Header Row: Badges & Controls */}
       <div className="hero-top-info">
-        <div className="hero-badges-wrapper">
-          <div className="flex items-center gap-2">
+        <div className="hero-badges-wrapper flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="hero-program-title flex items-center gap-1.5">
               <CalendarIcon className="w-3.5 h-3.5 opacity-80" />
               <span>
-                {isSelectedActive
-                  ? 'PROGRAMAÇÃO DE HOJE'
+                {isSelectedToday
+                  ? `PROGRAMAÇÃO DE HOJE (${selectedItem.weekday} ${selectedItem.dayDateStr})`
                   : `PROGRAMAÇÃO: DIA ${selectedItem.cycleDayNumber} (${selectedItem.weekday} ${selectedItem.dayDateStr})`}
               </span>
             </span>
@@ -161,20 +175,48 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
             )}
           </div>
 
-          {!isSelectedActive && (
-            <button
-              type="button"
-              onClick={() => handleSelectDay(safeActiveDay - 1)}
-              className="text-[11px] font-bold text-sky-400 hover:text-sky-300 underline transition-colors cursor-pointer"
-            >
-              Voltar ao Dia Ativo (Dia {safeActiveDay})
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Quick sync button if active cycle day does not match real today */}
+            {safeActiveDay !== realTodayCycleDay && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectActiveCycleDay?.(realTodayCycleDay);
+                  handleSelectDay(realTodayCycleDay - 1);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/35 text-amber-300 hover:bg-amber-500/25 transition-all cursor-pointer shadow-xs"
+                title={`Ajustar o ciclo para coincidir com hoje (${realTodayWeekday}, Dia ${realTodayCycleDay})`}
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>Ajustar Ciclo para Hoje ({realTodayWeekday}, Dia {realTodayCycleDay})</span>
+              </button>
+            )}
+
+            {!isSelectedActive && (
+              <button
+                type="button"
+                onClick={() => handleSelectDay(safeActiveDay - 1)}
+                className="text-[11px] font-bold text-sky-400 hover:text-sky-300 underline transition-colors cursor-pointer"
+              >
+                Ver Dia Ativo (Dia {safeActiveDay})
+              </button>
+            )}
+
+            {!isSelectedToday && (
+              <button
+                type="button"
+                onClick={() => handleSelectDay(realTodayCycleDay - 1)}
+                className="text-[11px] font-bold text-sky-400 hover:text-sky-300 underline transition-colors cursor-pointer"
+              >
+                Ver Hoje ({realTodayWeekday})
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Right Header Controls: History Button, Date Tag & Settings */}
+        {/* Right Header Controls: History Button, Real Date Tag & Settings */}
         <div className="hero-controls">
-          {/* Calendar History Button (Requested in brief) */}
+          {/* Calendar History Button */}
           <button
             type="button"
             onClick={onOpenHistoryCalendar}
@@ -186,8 +228,9 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
             <span className="hidden sm:inline">Histórico</span>
           </button>
 
-          <span className="hero-today-tag">
-            {selectedItem.dayDateStr} • {selectedItem.weekday}
+          {/* Real Current Calendar Date Tag: Always accurately reflects today */}
+          <span className="hero-today-tag" title={`Data real de hoje: ${realTodayFullWeekday}, ${realTodayDateStr}`}>
+            Hoje: {realTodayDateStr} • {realTodayWeekday}
           </span>
 
           <button
@@ -364,12 +407,19 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
       {/* Bottom Section: Carrossel / Slider Horizontal dos Dias do Ciclo */}
       <div className="calendar-slider-wrapper">
         <div className="calendar-slider-header">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--cal-text-muted)]">
               Ciclo de {cycleLength} Dias
             </span>
-            <span className="text-[10px] text-sky-400 font-semibold bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
-              Hoje: Dia {safeActiveDay}
+            <span className="text-[10px] text-sky-400 font-bold bg-sky-500/10 px-2.5 py-0.5 rounded-full border border-sky-500/30 flex items-center gap-1">
+              <span>Hoje: {realTodayWeekday} ({realTodayDateStr})</span>
+            </span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              safeActiveDay === realTodayCycleDay
+                ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
+                : 'text-amber-400 bg-amber-500/10 border-amber-500/25'
+            }`}>
+              Dia Ativo: Dia {safeActiveDay}
             </span>
           </div>
 
@@ -426,7 +476,14 @@ export const CalendarHero: React.FC<CalendarHeroProps> = ({
                       <span className="slider-today-dot" title="Dia Ativo do Ciclo" />
                     )}
                   </div>
-                  <span className="slider-day-date">{item.dayDateStr}</span>
+                  <div className="flex items-center gap-1">
+                    {item.isToday && (
+                      <span className="text-[9px] font-black text-sky-300 bg-sky-500/20 px-1 py-0.5 rounded border border-sky-500/30">
+                        Hoje
+                      </span>
+                    )}
+                    <span className="slider-day-date">{item.dayDateStr}</span>
+                  </div>
                 </div>
 
                 {/* Sub-header com dia do ciclo e status */}

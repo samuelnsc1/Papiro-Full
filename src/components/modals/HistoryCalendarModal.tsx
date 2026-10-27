@@ -138,86 +138,86 @@ export const HistoryCalendarModal: React.FC<HistoryCalendarModalProps> = ({
         subjects: string[];
       };
 
-  // Prepare calendar cells (padding + actual days)
-  const calendarDays: CalendarCell[] = [];
-  // Empty padding for days before month starts
-  for (let i = 0; i < firstDayWeekday; i++) {
-    calendarDays.push({ isEmpty: true, key: `empty-${i}` });
-  }
-  // Days of the month
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const goal = goalsMap.get(dateStr);
-    const session = sessionsMap.get(dateStr);
-    const isToday = dateStr === todayStr;
-
-    // Determine status
-    let status: 'completed' | 'partial' | 'missed' = 'missed';
-    let statusLabel = 'Sem Registro';
-    if (goal?.status === 'completed') {
-      status = 'completed';
-      statusLabel = 'Meta Cumprida';
-    } else if (goal?.status === 'partial' || (session && session.totalSeconds > 0)) {
-      status = 'partial';
-      statusLabel = goal?.status === 'partial' ? 'Meta Parcial' : 'Estudo Registrado';
-    } else if (dateStr < todayStr) {
-      status = 'missed';
-      statusLabel = 'Meta Não Cumprida';
+  // Prepare calendar cells (padding + actual days) wrapped in useMemo for optimal stability
+  const calendarDays = useMemo<CalendarCell[]>(() => {
+    const list: CalendarCell[] = [];
+    // Empty padding for days before month starts
+    for (let i = 0; i < firstDayWeekday; i++) {
+      list.push({ isEmpty: true, key: `empty-${i}` });
     }
+    // Days of the month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const goal = goalsMap.get(dateStr);
+      const session = sessionsMap.get(dateStr);
+      const isToday = dateStr === todayStr;
 
-    // Combine subjects from goal and study sessions
-    const subjectSet = new Set<string>();
-    if (goal?.subjects) {
-      goal.subjects.forEach((s) => subjectSet.add(s.toUpperCase()));
-    }
-    if (session?.subjects) {
-      session.subjects.forEach((s) => subjectSet.add(s));
-    }
+      // Determine status
+      let status: 'completed' | 'partial' | 'missed' = 'missed';
+      let statusLabel = 'Sem Registro';
+      if (goal?.status === 'completed') {
+        status = 'completed';
+        statusLabel = 'Meta Cumprida';
+      } else if (goal?.status === 'partial' || (session && session.totalSeconds > 0)) {
+        status = 'partial';
+        statusLabel = goal?.status === 'partial' ? 'Meta Parcial' : 'Estudo Registrado';
+      } else if (dateStr < todayStr) {
+        status = 'missed';
+        statusLabel = 'Meta Não Cumprida';
+      }
 
-    calendarDays.push({
-      isEmpty: false,
-      key: dateStr,
-      dayNum: d,
-      dateStr,
-      isToday,
-      status,
-      statusLabel,
-      totalSeconds: session?.totalSeconds || goal?.totalSeconds || 0,
-      subjects: Array.from(subjectSet)
-    });
-  }
+      // Combine subjects from goal and study sessions
+      const subjectSet = new Set<string>();
+      if (goal?.subjects && Array.isArray(goal.subjects)) {
+        goal.subjects.forEach((s) => {
+          if (s) subjectSet.add(String(s).toUpperCase());
+        });
+      }
+      if (session?.subjects) {
+        session.subjects.forEach((s) => {
+          if (s) subjectSet.add(String(s).toUpperCase());
+        });
+      }
+
+      list.push({
+        isEmpty: false,
+        key: dateStr,
+        dayNum: d,
+        dateStr,
+        isToday,
+        status,
+        statusLabel,
+        totalSeconds: session?.totalSeconds || goal?.totalSeconds || 0,
+        subjects: Array.from(subjectSet)
+      });
+    }
+    return list;
+  }, [currentYear, currentMonth, daysInMonth, firstDayWeekday, goalsMap, sessionsMap, todayStr]);
 
   // Selected day details for persistent, flicker-free presentation (click-based)
   const selectedDayData = useMemo(() => {
     const match = calendarDays.find((c) => !c.isEmpty && c.dateStr === selectedDateStr);
-    if (match && !match.isEmpty) {
-      const dateObj = new Date(`${match.dateStr}T12:00:00`);
-      const fullDateBR = dateObj.toLocaleDateString('pt-BR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
-      return {
-        ...match,
-        fullDateBR
-      };
-    }
-    const firstValid = calendarDays.find((c) => !c.isEmpty);
-    if (firstValid && !firstValid.isEmpty) {
-      const dateObj = new Date(`${firstValid.dateStr}T12:00:00`);
-      const fullDateBR = dateObj.toLocaleDateString('pt-BR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
-      return {
-        ...firstValid,
-        fullDateBR
-      };
-    }
-    return null;
+    const target = (match && !match.isEmpty) ? match : calendarDays.find((c) => !c.isEmpty);
+    if (!target || target.isEmpty) return null;
+
+    const parts = target.dateStr.split('-');
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    const dateObj = new Date(y, m - 1, d, 12, 0, 0);
+    const fullDateBR = !isNaN(dateObj.getTime())
+      ? dateObj.toLocaleDateString('pt-BR', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        })
+      : target.dateStr;
+
+    return {
+      ...target,
+      fullDateBR
+    };
   }, [calendarDays, selectedDateStr]);
 
   if (!isOpen) return null;
